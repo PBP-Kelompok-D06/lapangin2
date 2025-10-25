@@ -3,20 +3,23 @@ from django.urls import reverse
 from django.contrib.auth.models import User
 
 class AuthBookingTests(TestCase):
+
     def test_register_page_loads(self):
         response = self.client.get(reverse('authbooking:register'))
         self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'register.html')
 
     def test_login_page_loads(self):
         response = self.client.get(reverse('authbooking:login'))
         self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'login.html')
 
     def test_register_post_creates_user(self):
         response = self.client.post(
             reverse('authbooking:register'),
             {
                 'username': 'testuser',
-                'password1': 'StrongPassword!123', #buat password yang kuat biar berhasil register oleh django
+                'password1': 'StrongPassword!123',
                 'password2': 'StrongPassword!123',
                 'role': 'PEMILIK',
                 'nomor_rekening': '1234567890', 
@@ -24,9 +27,15 @@ class AuthBookingTests(TestCase):
             },
             HTTP_X_REQUESTED_WITH='XMLHttpRequest'
         )
-    
-        self.assertTrue(User.objects.filter(username='testuser').exists())
 
+        # Cek status dan response type
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('application/json', response['Content-Type'])
+
+        # Cek user berhasil dibuat
+        self.assertTrue(User.objects.filter(username='testuser').exists())
+        user = User.objects.get(username='testuser')
+        self.assertEqual(user.profile.role, 'PEMILIK')
 
     def test_login_post_redirects(self):
         User.objects.create_user(username='testuser', password='abc123456')
@@ -39,6 +48,7 @@ class AuthBookingTests(TestCase):
             data,
             HTTP_X_REQUESTED_WITH='XMLHttpRequest'
         )
+
         self.assertEqual(response.status_code, 200)
         self.assertIn('application/json', response['Content-Type'])
 
@@ -46,5 +56,5 @@ class AuthBookingTests(TestCase):
         User.objects.create_user(username='testuser', password='abc123456')
         self.client.login(username='testuser', password='abc123456')
         response = self.client.get(reverse('authbooking:logout'))
-        # Logout kemungkinan redirect ke login
-        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, '/')  # ubah jadi ke '/'
+
