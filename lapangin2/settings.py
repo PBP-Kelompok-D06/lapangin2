@@ -33,6 +33,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "zibeon-jonriano-lapangin2.pbp.cs.ui.ac.id"]
 
+CSRF_TRUSTED_ORIGINS = ['https://zibeon-jonriano-lapangin2.pbp.cs.ui.ac.id']
+
+
 
 
 # Application definition
