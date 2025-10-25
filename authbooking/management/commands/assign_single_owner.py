@@ -34,7 +34,7 @@ class Command(BaseCommand):
     help = 'Mengassign SEMUA Lapangan yang belum terassign ke satu akun PEMILIK: pemilik01.'
 
     def handle(self, *args, **options):
-        TARGET_USERNAME = 'syif' # <-- ini username dari akun yang udah dibuat sebelumnya dengan role PEMILIK
+        TARGET_USERNAME = 'juragan01' # <-- ini username dari akun yang udah dibuat sebelumnya dengan role PEMILIK
         
         # 1. Ambil Akun User dan Profile Target
         try:
