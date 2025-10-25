@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - Lapangin{% endblock title %}
+
+{% block content %}
+<div class="bg-gray-50 w-full min-h-screen flex items-center justify-center p-8">
+  <div class="max-w-md w-full">
+    <div class="bg-white rounded-lg border border-gray-200 p-6 sm:p-8 form-style">
+      <div class="text-center mb-8">
+        <h1 class="text-2xl font-bold text-gray-900 mb-2">Sign In</h1>
+        <p class="text-gray-600">Welcome back to Lapangin</p>
+      </div>
+
+      <form id="login-form" class="space-y-6">
+        {% csrf_token %}
+        <div>
+          <label for="username" class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+          <input id="username" name="username" type="text" required
+            class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:border-[#839556] transition-colors" 
+            placeholder="Enter your username">
+          <div class="error-message text-xs text-red-500 mt-1"></div>
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+          <input id="password" name="password" type="password" required
+            class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:border-[#839556] transition-colors" 
+            placeholder="Enter your password">
+          <div class="error-message text-xs text-red-500 mt-1"></div>
+        </div>
+
+        <button type="submit"
+          class="w-full bg-[#839556] text-white font-medium py-3 px-4 rounded-md hover:bg-[#A7BF6E] transition-colors">
+          Sign In
+        </button>
+      </form>
+
+      <div class="mt-6 text-center pt-6 border-t border-gray-200">
+        <p class="text-gray-500 text-sm">
+          Don't have an account? 
+          <a href="{% url 'authbooking:register' %}" class="text-[#839556] hover:text-[#A7BF6E] font-medium">
+            Register Now
+          </a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% include 'toast.html' %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const form = document.getElementById("login-form");
+
+    function showToast(title, message, type="info", duration=3000) {
+        const toast = document.getElementById("toast-component");
+        const icon = document.getElementById("toast-icon");
+        const toastTitle = document.getElementById("toast-title");
+        const toastMessage = document.getElementById("toast-message");
+
+        toastTitle.innerText = title;
+        toastMessage.innerText = message;
+
+        let bgColor = "bg-gray-200";
+        icon.innerHTML = "ℹ️";
+
+        if(type === "success") { bgColor = "bg-green-100"; icon.innerHTML = "✅"; }
+        else if(type === "error") { bgColor = "bg-red-100"; icon.innerHTML = "❌"; }
+
+        toast.classList.remove("opacity-0", "translate-y-10", "pointer-events-none");
+        toast.classList.add("opacity-100", bgColor);
+
+        setTimeout(() => {
+            toast.classList.add("opacity-0", "translate-y-10", "pointer-events-none");
+            toast.classList.remove(bgColor);
+        }, duration);
+    }
+
+    form.addEventListener("submit", function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+        const nextInput = document.createElement("input");
+        nextInput.type = "hidden";
+        nextInput.name = "next";
+        nextInput.value = "{{ next }}";
+        formData.append("next", nextInput.value);
+
+        fetch("{% url 'authbooking:login' %}", {
+            method: "POST",
+            headers: {
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": form.querySelector('[name="csrfmiddlewaretoken"]').value
+            },
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            form.querySelectorAll(".error-message").forEach(el => el.textContent = "");
+
+            if(data.success) {
+                showToast("Login Berhasil", data.message, "success");
+                setTimeout(() => { window.location.href = data.redirect_url; }, 800);
+            } else {
+                for (let field in data.errors) {
+                    const input = document.getElementById(`id_${field}`) || document.getElementById(field);
+                    if(input){
+                        const errDiv = input.parentNode.querySelector(".error-message");
+                        if(errDiv) errDiv.textContent = data.errors[field].join(", ");
+                    } else {
+                        const div = document.createElement("div");
+                        div.classList.add("text-xs", "text-red-500", "mb-2");
+                        div.textContent = data.errors[field].join(", ");
+                        form.prepend(div);
+                    }
+                }
+            }
+        })
+        .catch(err => console.error(err));
+    });
+});
+</script>
+{% endblock content %}

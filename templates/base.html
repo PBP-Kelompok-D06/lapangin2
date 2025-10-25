@@ -1,0 +1,61 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lapang.in | {% block title %}{% endblock title %}</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#A7BF6E',
+                        'secondary': '#212121', 
+                        'accent': '#f97316',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+</head>
+<body class="bg-gray-50 flex flex-col min-h-screen">
+
+    {% if show_navbar %}
+        {% include 'navbar.html' %}
+    {% endif %}
+
+
+    <main class="flex-grow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {% block content %}
+            {% endblock content %}
+        </div>
+    </main>
+
+    {% if show_navbar %}
+        {% include 'footer.html' %}
+    {% endif %}
+
+    {% for message in messages %}
+        <div 
+            class="django-toast-data hidden" 
+            data-type="{{ message.tags }}" 
+            data-message="{{ message }}"
+        ></div>
+    {% endfor %}
+
+    <!-- Include Toast Component -->
+    {% include 'toast.html' %}
+
+    {% block extra_script %}{% endblock extra_script %}
+
+</body>
+</html>

@@ -1,0 +1,610 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% load custom_filters %}
+
+
+
+{% block title %}{{ lapangan_terpilih.nama_lapangan }} Booking{% endblock %}
+
+
+
+{% block content %}
+
+<div class="py-8">
+
+
+
+<!-- SECTION: VISUAL HERO / HEADER LAPANGAN (IMAGE) -->
+
+<div class="relative w-full h-80 overflow-hidden rounded-lg shadow-xl mb-8">
+
+<img src="{% static '' %}{{ hero_image_url }}"
+
+alt="Visual Lapangan {{ lapangan_terpilih.nama_lapangan }}"
+
+class="w-full h-full object-cover transition duration-300 hover:scale-105">
+
+
+
+<div class="absolute inset-0 bg-black bg-opacity-30 flex items-end p-6">
+
+<h1 class="text-4xl font-bold text-white mb-2">{{ lapangan_terpilih.nama_lapangan|default:"Pilih Lapangan" }}</h1>
+
+</div>
+
+</div>
+
+
+
+    <div class="max-w-7xl mx-auto">
+        
+         <!-- SECTION: FILTER CONTROLS (DROPDOWN LAPANGAN & TANGGAL) -->
+         <!-- Ini mengimplementasikan Aturan Wajib: Filter Data      -->
+        <header class="mb-8 p-6 bg-white shadow-sm rounded-md">
+            <h2 class="text-2xl font-bold text-gray-800">Booking Lapangan</h2>
+            
+            <form id="filter-form" method="GET" class="flex flex-col md:flex-row gap-4 mt-4">
+                
+
+{# Filter Input Tanggal #}
+
+<div class="flex-grow">
+
+<label for="date_filter" class="block text-sm font-medium text-gray-700 mb-4">Pilih Tanggal Booking:</label>
+
+<input type="date" name="date" id="date_filter" value="{{ filter_date_str }}"
+
+min="{{ today|date:'Y-m-d' }}"
+
+onchange="this.form.submit()"
+
+class="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:ring-gray-300 focus:border-gray-300 rounded-md">
+
+</div>
+
+</form>
+
+
+{% if lapangan_terpilih %}
+
+<p class="text-2xl font-bold text-primary mt-4"> <span class="text-sm text-gray-600">Harga/Jam:</span>
+
+Rp {{ lapangan_terpilih.harga_per_jam|floatformat:0 }} / Jam
+
+</p>
+
+{% endif %}
+
+</header>
+
+
+<h3 class="text-xl font-bold text-gray-800 mb-4">Pilih Sesi</h3>
+
+
+
+<!-- SECTION: GRID SLOT JADWAL (7 HARI TABLE / CARD) -->
+
+
+<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+
+
+{% for slot_date in date_list %}
+
+<div class="bg-white p-3 rounded-xl shadow-sm flex flex-col min-h-[300px]">
+
+
+{# Slot Header (Tanggal dan Hari) #}
+
+<div class="text-center pb-2 mb-3 border-b border-gray-200">
+
+<p class="text-xs font-semibold uppercase {% if slot_date == today %}text-yellow-600{% else %}text-primary{% endif %}">
+
+{{ slot_date|date:"D" }}
+
+</p>
+
+<p class="text-xl font-bold text-gray-800">{{ slot_date|date:"d M" }}</p>
+
+</div>
+
+
+{# Daftar Card Slot Waktu #}
+
+<div class="space-y-2 flex-grow">
+
+{% with slots_by_date|get_item:slot_date as slots %}
+
+{% if slots %}
+
+{% for slot in slots %}
+
+<div
+
+data-slot-id="{{ slot.id }}"
+
+data-available="{% if slot.display_status == 'AVAILABLE' %}true{% else %}false{% endif %}"
+
+class="slot-card p-2 rounded-lg border border-gray-300 text-center
+
+{% if slot.display_status == 'AVAILABLE' %}cursor-pointer hover:shadow-lg transition duration-150{% else %}unavailable{% endif %}">
+
+
+<p class="text-sm font-semibold mb-1
+
+{% if slot.is_available %}text-gray-800{% else %}text-gray-500{% endif %}">
+
+{{ slot.jam_mulai|date:"H:i" }} - {{ slot.jam_akhir|date:"H:i" }}
+
+</p>
+
+<p class="text-lg font-bold
+
+{% if slot.is_available %}text-primary{% else %}text-gray-400{% endif %}">
+
+{% if slot.is_available %}
+
+Rp {{ slot.lapangan.harga_per_jam|floatformat:0 }}
+
+{% else %}
+
+BOOKED
+
+{% endif %}
+
+</p>
+
+
+
+<span class="text-xs font-bold uppercase mt-2 px-2 py-0.5 rounded
+
+{% if slot.display_status == 'AVAILABLE' %}bg-green-200 text-green-700
+
+{% elif slot.display_status == 'PENDING' %}bg-yellow-200 text-yellow-700
+
+{% else %}bg-red-200 text-red-700{% endif %}">
+
+{{ slot.display_status }}
+
+</span>
+
+</div>
+
+{% endfor %}
+
+{% else %}
+
+<p class="text-center text-sm text-gray-500 py-4">Booking Session untuk hari ini belum dibuka.</p>
+
+{% endif %}
+
+{% endwith %}
+
+</div>
+
+</div>
+
+{% endfor %}
+
+
+</div>
+
+
+
+<!-- SECTION: FLOATING CHECKOUT BUTTON (ACTION & MESSAGES) -->
+
+<!-- Mengimplementasikan Aturan Wajib: Form & AJAX -->
+
+
+
+<div class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-2xl p-4 z-40">
+
+<div class="max-w-7xl mx-auto flex justify-end items-center">
+
+
+<button id="btn-lanjut-bayar" disabled
+
+class="px-8 py-3 bg-primary text-white font-bold rounded-lg shadow-xl
+
+disabled:opacity-50 transition duration-300">
+
+Lanjut Pembayaran
+
+</button>
+
+</div>
+
+<div id="message-area" class="text-center text-sm mt-2"></div>
+
+</div>
+
+
+
+</div>
+
+</div>
+
+
+
+
+
+<!-- Modal Login Diperlukan -->
+
+<div id="loginModal"
+
+class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-[100]">
+
+<div class="bg-white rounded-xl shadow-2xl p-8 max-w-sm w-full text-center animate-fade-in">
+
+<h2 class="text-xl font-bold text-gray-800 mb-4">Login Diperlukan</h2>
+
+<p class="text-gray-600 mb-6">Anda harus login terlebih dahulu untuk melanjutkan ke pembayaran.</p>
+
+<div class="flex justify-center gap-4">
+
+<button id="btnBatalLogin"
+
+class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400">
+
+Batal
+
+</button>
+
+<a id="btnKeLogin"
+
+href="{% url 'authbooking:login' %}?next={% url 'booking:show_booking_page' %}"
+
+class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-[#4D5833]">
+
+Login Sekarang
+
+</a>
+
+</div>
+
+</div>
+
+</div>
+
+
+
+{% endblock content %}
+
+
+
+<!-- SECTION: JAVASCRIPT (LOGIC AJAX & DOM MANIPULATION) -->
+
+{% block extra_script %}
+
+<script>
+
+// ✅ TAMBAHAN KRITIS: Fungsi untuk mendapatkan CSRF token
+
+function getCookie(name) {
+
+let cookieValue = null;
+
+if (document.cookie && document.cookie !== '') {
+
+const cookies = document.cookie.split(';');
+
+for (let i = 0; i < cookies.length; i++) {
+
+const cookie = cookies[i].trim();
+
+if (cookie.substring(0, name.length + 1) === (name + '=')) {
+
+cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+
+break;
+
+}
+
+}
+
+}
+
+return cookieValue;
+
+}
+
+
+
+const csrftoken = getCookie('csrftoken');
+
+
+
+document.addEventListener('DOMContentLoaded', () => {
+
+let selectedSlotId = null;
+
+const btnBayar = document.getElementById('btn-lanjut-bayar');
+
+const slotCards = document.querySelectorAll('.slot-card');
+
+const messageArea = document.getElementById('message-area');
+
+const modal = document.getElementById('loginModal');
+
+const btnBatal = document.getElementById('btnBatalLogin');
+
+
+
+// 1. Logic Pemilihan Slot
+
+slotCards.forEach(card => {
+
+card.addEventListener('click', () => {
+
+if (card.dataset.available === 'true') {
+
+document.querySelectorAll('.slot-card').forEach(c => c.classList.remove('selected', 'border-primary', 'bg-green-50'));
+
+card.classList.add('selected', 'border-primary', 'bg-green-50');
+
+selectedSlotId = card.dataset.slotId;
+
+btnBayar.disabled = false;
+
+messageArea.innerHTML = '';
+
+} else {
+
+messageArea.innerHTML = '<span class="text-red-500">Slot ini sudah dibooking.</span>';
+
+}
+
+});
+
+});
+
+
+
+// 2. Tombol Lanjut Pembayaran
+
+btnBayar.addEventListener('click', async function() {
+
+if (!selectedSlotId) {
+
+messageArea.innerHTML = '<span class="text-red-500">Pilih slot terlebih dahulu.</span>';
+
+return;
+
+}
+
+
+
+btnBayar.disabled = true;
+
+btnBayar.textContent = 'Memproses Booking...';
+
+messageArea.innerHTML = '<span class="text-primary">Harap tunggu...</span>';
+
+
+
+try {
+
+const response = await fetch("{% url 'booking:create_booking' %}", {
+
+method: 'POST',
+
+headers: {
+
+'Content-Type': 'application/json',
+
+'X-CSRFToken': csrftoken // ✅ TAMBAHAN KRITIS: CSRF Token
+
+},
+
+body: JSON.stringify({ slot_id: selectedSlotId })
+
+});
+
+
+
+// Deteksi: kalau Django redirect ke login (HTML)
+
+const contentType = response.headers.get("content-type") || "";
+
+if (contentType.includes("text/html")) {
+
+modal.classList.remove('hidden');
+
+modal.classList.add('flex');
+
+btnBayar.disabled = false;
+
+btnBayar.textContent = 'Lanjut Pembayaran';
+
+messageArea.innerHTML = '';
+
+return;
+
+}
+
+
+
+const result = await response.json();
+
+
+
+if (response.ok && result.success) {
+
+messageArea.innerHTML = '<span class="text-green-600">Booking berhasil!</span>';
+
+setTimeout(() => {
+
+window.location.href = `{% url 'booking:show_payment_page' 0 %}`.replace('0', result.booking_id);
+
+}, 1000);
+
+} else {
+
+throw new Error(result.message || "Gagal membuat booking.");
+
+}
+
+
+
+} catch (error) {
+
+btnBayar.disabled = false;
+
+btnBayar.textContent = 'Lanjut Pembayaran';
+
+messageArea.innerHTML = `<span class="text-red-500">${error.message}</span>`;
+
+}
+
+});
+
+
+
+// 3. Tutup modal
+
+btnBatal.addEventListener('click', () => {
+
+modal.classList.add('hidden');
+
+modal.classList.remove('flex');
+
+});
+
+});
+
+
+
+const pollingInterval = 5000; // 5 detik
+
+
+const updateCardStatus = (slotId, newStatus) => {
+
+const card = document.querySelector(`.slot-card[data-slot-id="${slotId}"]`);
+
+if (!card) return;
+
+
+
+const badge = card.querySelector('span'); // ambil elemen badge status
+
+if (!badge) return;
+
+
+
+// Hapus style lama di card & badge
+
+card.classList.remove(
+
+'selected', 'available', 'unavailable',
+
+'border-primary', 'bg-green-50',
+
+'border-yellow-500', 'bg-yellow-100',
+
+'border-red-500', 'bg-red-100'
+
+);
+
+badge.classList.remove(
+
+'bg-green-200', 'text-green-700',
+
+'bg-yellow-200', 'text-yellow-700',
+
+'bg-red-200', 'text-red-700'
+
+);
+
+
+
+// Update data-attribute
+
+card.dataset.available = (newStatus === 'AVAILABLE' ? 'true' : 'false');
+
+
+
+// Terapkan style baru sesuai status
+
+if (newStatus === 'PENDING') {
+
+card.classList.add('unavailable', 'border-yellow-500', 'bg-[rgba(232,201,0,0.1)]');
+
+badge.classList.add('bg-yellow-200', 'text-yellow-700');
+
+badge.textContent = 'PENDING';
+
+} else if (newStatus === 'BOOKED') {
+
+card.classList.add('unavailable', 'border-red-500', 'bg-red-50');
+
+badge.classList.add('bg-red-200', 'text-red-700');
+
+badge.textContent = 'BOOKED';
+
+} else {
+
+card.classList.add('available', 'cursor-pointer');
+
+badge.classList.add('bg-green-200', 'text-green-700');
+
+badge.textContent = 'AVAILABLE';
+
+}
+
+};
+
+
+
+const pollStatus = async () => {
+
+// Ambil Lapangan ID yang sedang dilihat User 2 dari filter dropdown
+
+const lapanganSelect = document.getElementById('lapangan_id_filter');
+
+if (!lapanganSelect) return;
+
+
+const currentLapanganId = lapanganSelect.value;
+
+
+try {
+
+const response = await fetch(`{% url 'booking:check_slot_status' %}?lapangan_id=${currentLapanganId}`);
+
+if (!response.ok) throw new Error('Polling failed');
+
+
+const slotsData = await response.json();
+
+
+
+slotsData.forEach(slot => {
+
+// Update status di browser User 2
+
+updateCardStatus(slot.id, slot.status);
+
+});
+
+
+} catch (error) {
+
+console.error("Error Polling:", error);
+
+}
+
+};
+
+
+// Mulai Polling setelah halaman selesai dimuat
+
+if (document.getElementById('lapangan_id_filter')) {
+
+setInterval(pollStatus, pollingInterval);
+
+}
+
+</script>
+
+{% endblock extra_script %}

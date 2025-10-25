@@ -1,0 +1,352 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ lapangan.nama_lapangan }} - Gallery{% endblock %}
+
+{% block content %}
+<section id="gallery-view" class="min-h-screen pb-16 bg-gray-50">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Hero + Thumbnails -->
+    <div class="mb-8">
+      <div class="relative">
+        <!-- Hero Image -->
+        <div class="rounded-xl overflow-hidden shadow-md">
+          <img id="hero-image"
+               src="{% static hero_images.0 %}"
+               alt="{{ lapangan.nama_lapangan }}"
+               class="w-full h-[60vh] md:h-[50vh] lg:h-[60vh] object-cover transition-opacity duration-300">
+        </div>
+
+    <!-- Thumbnails (overlap style) -->
+    <div class="absolute left-0 right-0 -bottom-14 flex justify-center pointer-events-none">
+      <div id="thumbnail-wrapper" class="pointer-events-auto">
+        <div id="thumbnail-container"
+            class="flex gap-3 sm:gap-4 items-center justify-center bg-transparent px-2 sm:px-4 flex-wrap sm:flex-nowrap">
+
+            {% for img in gallery_images %}
+              <img src="{% static img %}"
+                  data-src="{% static img %}"
+                  alt="{{ lapangan.nama_lapangan }} thumbnail {{ forloop.counter }}"
+                  class="thumbnail rounded-xl h-20 w-28 sm:h-28 sm:w-36 object-cover cursor-pointer shadow-lg border-4 border-white flex-shrink-0 transition-transform duration-150">
+            {% endfor %}
+
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main content card -->
+    <div class="bg-white rounded-2xl shadow-sm p-6 sm:p-8 mt-20">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left: title, rating, fasilitas, deskripsi -->
+        <div class="lg:col-span-2">
+          <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3">{{ lapangan.nama_lapangan }}</h1>
+
+          <!-- Rating -->
+          <div class="flex items-center gap-3 mb-4">
+            <div class="flex items-center text-yellow-400 text-lg">
+              {% for i in "12345" %}
+                {% if i <= lapangan.rating|floatformat:0 %}
+                  <i class="fas fa-star" style="color: gold;"></i>
+                {% else %}
+                  <i class="far fa-star"></i>
+                {% endif %}
+              {% endfor %}
+            </div>
+            <div class="text-sm text-gray-600">({{ lapangan.jumlah_ulasan }} ulasan)</div>
+          </div>
+
+          <!-- Fasilitas -->
+          <div class="mb-6">
+            <h3 class="text-md font-semibold text-gray-800 mb-2">Fasilitas</h3>
+            <div class="flex flex-wrap gap-2">
+              {% for f in fasilitas_list %}
+                <span class="bg-[#dfeecd] text-gray-800 text-sm px-3 py-1 rounded-full">{{ f }}</span>
+              {% empty %}
+                <span class="text-gray-500 text-sm">Tidak ada fasilitas terdaftar.</span>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Deskripsi -->
+          <div class="mb-6">
+            <h3 class="text-md font-semibold text-gray-800 mb-2">Deskripsi</h3>
+            <p class="text-gray-600 text-sm leading-relaxed text-justify">
+              {% if lapangan.deskripsi %}
+                {{ lapangan.deskripsi }}
+              {% else %}
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum ornare
+                volutpat turpis ut cursus. Morbi enim massa, dignissim id dictum sit amet,
+                finibus dictum nisi.
+              {% endif %}
+            </p>
+          </div>
+        </div>
+
+        <!-- Right: price + booking -->
+        <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between w-full">
+          <!-- Harga -->
+            <p class="text-2xl font-bold text-primary mt-4">
+                <span class="text-sm text-gray-600">Harga/Jam:</span> Rp {{ lapangan.harga_per_jam|floatformat:0 }}
+            </p>
+          </div>
+
+          <!-- Tombol Booking -->
+        </div>
+        <div class="flex justify-center lg:justify-start w-full">
+  <a href="{% url 'booking:show_booking_page' %}?lapangan_id={{ lapangan.id }}"
+     class="mt-8 mb-8 w-full lg:w-[250px] bg-[#a7bf6e] hover:bg-[#4f4f4f] 
+            text-white font-semibold py-3 px-8 rounded-md shadow-md 
+            transition duration-300 text-center">
+    Booking Sekarang
+  </a>
+</div>
+
+        <div id="reviews-section" class="lg:col-span-3 mt-10">
+            <h3 class="ulasan text-md font-semibold text-gray-800 mb-2 mt-20 padding-0">Ulasan untuk {{lapangan.nama_lapangan}} </h3>
+
+          {% include "rating_stats.html" %}
+          {% include "reviews.html" %}
+        </div>
+        <div class="flex justify-center mt-4">
+          <button id="lihat-semua-btn" class="block w-full lg:w-auto text-center lg:text-right px-4 py-2 bg-primary text-white rounded-lg hover:bg-[#4D5833] transition">            Lihat Semua Ulasan
+          </button>
+        </div>
+
+
+
+      </div>
+    </div>
+
+  </div>
+
+</section>
+
+<style>
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
+
+<script>
+
+document.getElementById('lihat-semua-btn').addEventListener('click', function() {
+  window.location.href = `/review/${field_id}/`;
+});
+document.addEventListener("DOMContentLoaded", function() {
+  const heroImage = document.getElementById('hero-image');
+  const thumbnails = document.querySelectorAll('.thumbnail');
+  const galleryContainer = document.getElementById('thumbnail-container');
+  const prevBtn = document.getElementById('gallery-prev');
+  const nextBtn = document.getElementById('gallery-next');
+
+  // mark first thumbnail active
+  function clearActive() {
+    thumbnails.forEach(t => {
+      t.classList.remove('ring-4', 'ring-[#a7bf6e]', 'scale-105', 'translate-y-0');
+      t.style.transform = '';
+    });
+  }
+
+  if (thumbnails.length > 0) {
+    clearActive();
+    thumbnails[0].classList.add('ring-4', 'ring-[#a7bf6e]', 'scale-105');
+  }
+
+  thumbnails.forEach((thumb) => {
+    thumb.addEventListener('click', () => {
+      const src = thumb.dataset.src || thumb.src;
+      // fade out / in
+      heroImage.classList.add('opacity-0');
+      setTimeout(() => {
+        heroImage.src = src;
+        heroImage.classList.remove('opacity-0');
+      }, 120);
+
+      clearActive();
+      thumb.classList.add('ring-4', 'ring-[#a7bf6e]', 'scale-105');
+      // ensure visible
+      thumb.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+    });
+
+    // keyboard accessibility
+    thumb.setAttribute('tabindex', '0');
+    thumb.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') thumb.click();
+    });
+  });
+
+  // thumbnail scroll buttons (only visible desktop)
+  if (prevBtn && nextBtn && galleryContainer) {
+    prevBtn.addEventListener('click', () => galleryContainer.scrollBy({ left: -280, behavior: 'smooth' }));
+    nextBtn.addEventListener('click', () => galleryContainer.scrollBy({ left: 280, behavior: 'smooth' }));
+  }
+});
+
+fetch(`/review/${field_id}/`, {
+  headers: { "x-requested-with": "XMLHttpRequest" }
+})
+  .then(res => res.json())
+  .then(data => {
+    document.querySelector('.all-reviews').innerHTML = '';
+
+    data.reviews.slice(0, 4).forEach(r => {
+      const container = document.createElement('div');
+      container.classList.add('container');
+      container.style.display = 'flex';
+      container.style.flexDirection = 'column';
+      container.style.alignItems = 'flex-end';
+      container.style.gap = '16px';
+      container.style.borderBottom = '1px solid #ddd';
+      container.style.paddingBottom = '24px';
+      container.setAttribute('data-review-id', r.id);
+
+      container.innerHTML = `
+        <div class="profile" style="position: relative; display: flex; align-items: center; gap: 24px; align-self: stretch;">
+          <div class="h-8 w-8 rounded-full bg-[#CFE1A5] flex items-center justify-center text-[#4F4F4F] font-bold text-sm border-2 border-primary">
+            ${r.user.charAt(0).toUpperCase()}
+          </div>
+          <div class="profile-name">
+            <h1 style=" font-size: 24px; font-weight: 600; color: #212121;">
+              ${r.user}
+            </h1>
+            <p style="font-size: 13px; color: #555;">
+              ${r.created_at}
+            </p>
+          </div>
+        </div>
+
+        <div class="review-content" style="display: flex; width: 100%; flex-direction: column; align-items: flex-start; gap: 32px;">
+          <p style="text-align: justify; font-size: 20px; color: #212121; font-weight: 400; line-height: 120%; letter-spacing: 0.4px;">
+            ${r.content}
+          </p>
+          <div class="rating" style="color: #FFD700; font-size: 18px;">
+            ${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}
+          </div>
+        </div>
+      `;
+
+      if (r.is_owner) {
+        const dotsBtn = document.createElement('button');
+        dotsBtn.classList.add('dots-btn');
+        dotsBtn.innerHTML = '⋮';
+        dotsBtn.style.position = 'absolute';
+        dotsBtn.style.right = '10px';
+        dotsBtn.style.top = '5px';
+        dotsBtn.style.background = 'none';
+        dotsBtn.style.border = 'none';
+        dotsBtn.style.fontSize = '20px';
+        dotsBtn.style.cursor = 'pointer';
+
+        const dropdownMenu = document.createElement('div');
+        dropdownMenu.classList.add('dropdown-menu');
+        dropdownMenu.style.display = 'none';
+        dropdownMenu.style.position = 'absolute';
+        dropdownMenu.style.right = '0';
+        dropdownMenu.style.top = '28px';
+        dropdownMenu.style.background = 'white';
+        dropdownMenu.style.border = '1px solid #ddd';
+        dropdownMenu.style.borderRadius = '6px';
+        dropdownMenu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+        dropdownMenu.style.zIndex = '10';
+
+        dropdownMenu.innerHTML = `
+          <button class="edit-btn" style="display: block; width: 100%; text-align: left; padding: 8px 12px; background: none; border: none; cursor: pointer;">✏️ Edit</button>
+          <button class="delete-btn" style="display: block; width: 100%; text-align: left; padding: 8px 12px; background: none; border: none; color: red; cursor: pointer;">🗑️ Hapus</button>
+        `;
+
+        const profileDiv = container.querySelector('.profile');
+        profileDiv.appendChild(dotsBtn);
+        profileDiv.appendChild(dropdownMenu);
+
+        dotsBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isVisible = dropdownMenu.style.display === 'block';
+          document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
+          dropdownMenu.style.display = isVisible ? 'none' : 'block';
+        });
+
+        document.addEventListener('click', () => {
+          dropdownMenu.style.display = 'none';
+        });
+
+        dropdownMenu.querySelector('.delete-btn').addEventListener('click', () => {
+          const modal = document.getElementById('HapusModal');
+          const btnBatal = document.getElementById('btnBatalLogin');
+          const btnHapus = document.getElementById('btnHapus');
+
+          modal.classList.remove('hidden');
+          modal.classList.add('flex');
+
+          btnBatal.onclick = () => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+          };
+
+          btnHapus.onclick = () => {
+            fetch(`/review/delete/${r.id}/`, {
+              method: 'POST',
+              headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+              },
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                container.remove();
+                showToast('Berhasil', 'Ulasan berhasil dihapus', 'success');
+              } else {
+                showToast('Gagal', data.error || 'Terjadi kesalahan', 'error');
+              }
+
+              modal.classList.add('hidden');
+              modal.classList.remove('flex');
+              loadRatingStatistics(field_id);
+
+            })
+            .catch(() => {
+              showToast('Gagal', 'Terjadi kesalahan jaringan', 'error');
+              modal.classList.add('hidden');
+              modal.classList.remove('flex');
+            });
+          };
+        });
+
+        dropdownMenu.querySelector('.edit-btn').addEventListener('click', () => {
+        const modal = document.getElementById('review-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const contentInput = document.getElementById('content');
+        const submitBtn = document.getElementById('submit-btn');
+        const stars = modal.querySelectorAll('.star');
+
+        modal.dataset.mode = 'edit';
+        modal.dataset.reviewId = r.id;
+        
+        modalTitle.textContent = "Edit Ulasan";
+        submitBtn.textContent = "Simpan";
+
+        contentInput.value = r.content;
+        selectedRating = r.rating;
+
+        stars.forEach((s, i) => {
+          s.textContent = i < r.rating ? '★' : '☆';
+        });
+
+        dropdownMenu.style.display = 'none';
+
+        modal.style.display = 'flex';
+
+        loadRatingStatistics(field_id);
+
+      });
+
+      }
+      document.querySelector('.all-reviews').appendChild(container);
+    });
+  });
+
+
+</script>
+{% endblock %}

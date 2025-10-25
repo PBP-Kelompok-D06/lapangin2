@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Lapang.in - Booking Lapangan Gak Pake Drama!{% endblock %}
+
+{% block content %}
+<section id="hero" class="relative w-full flex items-center px-4 md:px-10 justify-start text-left text-white mt-4 md:mt-8 rounded-sm" style="height: 70vh; min-height: 70vh; max-height: 70vh; overflow: hidden;">
+  <img id="hero-image"
+       src="{% static 'images/image_header1.png' %}"
+       alt="Lapangan Olahraga"
+       class="brightness-50 rounded-xl"
+       style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; transform: none !important; transition: opacity 1s ease-in-out;">
+
+  <div class="relative z-10 px-2 md:px-4">
+    <h1 class="text-4xl md:text-6xl font-bold mb-2">Booking Lapangan</h1>
+    <h1 class="text-4xl md:text-6xl font-bold mb-2">Gak Pake Drama!</h1>
+    <p class="text-md md:text-xl font-light mb-6">Cari lapangan, pilih jadwal, langsung main!</p>
+    <a href="#explore"
+       class="bg-[#a7bf6e] hover:bg-[#4f4f4f] text-white font-semibold py-3 px-8 rounded-md shadow-md transition">
+       Explore
+    </a>
+  </div>
+</section>
+
+<section class="w-full md:mt-8 bg-white py-12 sm:py-16 px-4 sm:px-6 text-center rounded-xl">
+    {# ... (Kode fasilitas tetap sama) ... #}
+  <h2 class="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-8 sm:mb-10">
+    Akses lapangan favoritmu dengan berbagai fasilitas lengkap
+  </h2>
+  <div class="grid grid-cols-3 md:grid-cols-6 gap-6 sm:gap-8 justify-center items-center">
+    <div class="flex flex-col items-center"> <div class="flex items-center justify-center w-[100px] h-[100px] md:w-[130px] md:h-[130px] bg-white rounded-full shadow-lg border border-gray-100"> <i class="fas fa-wifi text-4xl md:text-5xl text-gray-600"></i> </div> </div>
+    <div class="flex flex-col items-center"> <div class="flex items-center justify-center w-[100px] h-[100px] md:w-[130px] md:h-[130px] bg-white rounded-full shadow-lg border border-gray-100"> <i class="fas fa-mosque text-4xl md:text-5xl text-gray-600"></i> </div> </div>
+    <div class="flex flex-col items-center"> <div class="flex items-center justify-center w-[100px] h-[100px] md:w-[130px] md:h-[130px] bg-white rounded-full shadow-lg border border-gray-100"> <i class="fas fa-door-open text-4xl md:text-5xl text-gray-600"></i> </div> </div>
+    <div class="flex flex-col items-center"> <div class="flex items-center justify-center w-[100px] h-[100px] md:w-[130px] md:h-[130px] bg-white rounded-full shadow-lg border border-gray-100"> <i class="fas fa-toilet text-4xl md:text-5xl text-gray-600"></i> </div> </div>
+    <div class="flex flex-col items-center"> <div class="flex items-center justify-center w-[100px] h-[100px] md:w-[130px] md:h-[130px] bg-white rounded-full shadow-lg border border-gray-100"> <i class="fas fa-utensils text-4xl md:text-5xl text-gray-600"></i> </div> </div>
+    <div class="flex flex-col items-center"> <div class="flex items-center justify-center w-[100px] h-[100px] md:w-[130px] md:h-[130px] bg-white rounded-full shadow-lg border border-gray-100"> <i class="fas fa-parking text-4xl md:text-5xl text-gray-600"></i> </div> </div>
+  </div>
+  <p class="mt-10 text-gray-700 max-w-3xl mx-auto leading-relaxed text-sm sm:text-base md:text-lg">
+    Berikut Venue <span class="text-[#a7bf6e] font-semibold">Olahraga Futsal</span>,
+    <span class="text-[#a7bf6e] font-semibold">Basket</span> dan
+    <span class="text-[#a7bf6e] font-semibold">Bulu Tangkis</span> di
+    <span class="text-[#a7bf6e] font-semibold">Semua Kota</span> yang sudah memenuhi standar kualitas terbaik
+    untuk memanjakan pengalamanmu bermain.
+  </p>
+</section>
+
+<section id="explore" class="w-full bg-gray-50 pt-10 px-6 md:px-12 rounded-xl"> {# Kurangi padding top jika perlu #}
+  <div class="py-8 flex flex-col md:flex-row justify-between items-center mb-8">
+    <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-4 md:mb-0">
+      Temukan Lapangan Terbaik
+    </h2>
+
+    <form method="get" class="flex flex-wrap gap-3">
+      <select name="jenis" class="border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none">
+        <option value="all" {% if selected_jenis == 'all' %}selected{% endif %}>Semua Jenis</option>
+        {% for jenis in jenis_list %}
+          <option value="{{ jenis }}" {% if selected_jenis == jenis %}selected{% endif %}>{{ jenis|title }}</option>
+        {% endfor %}
+      </select>
+      <select name="rating" class="border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none">
+        <option value="all" {% if selected_rating == 'all' %}selected{% endif %}>Semua Rating</option>
+        <option value="4" {% if selected_rating == '4' %}selected{% endif %}>⭐ 4 ke atas</option>
+        <option value="3" {% if selected_rating == '3' %}selected{% endif %}>⭐ 3 ke atas</option>
+        <option value="2" {% if selected_rating == '2' %}selected{% endif %}>⭐ 2 ke atas</option>
+        <option value="1" {% if selected_rating == '1' %}selected{% endif %}>⭐ 1 ke atas</option>
+        <option value="0" {% if selected_rating == '0' %}selected{% endif %}>⭐ Tidak ada ulasan</option>
+      </select>
+      <button type="submit" class="bg-[#a7bf6e] hover:bg-[#4f4f4f] text-white px-5 py-2 rounded-md">
+        Filter
+      </button>
+    </form>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    {% for lap in page_obj %}
+      <div class="bg-white shadow-md rounded-xl overflow-hidden hover:shadow-lg transition flex flex-col"> {# <-- Tambah flex flex-col #}
+
+        {# --- BAGIAN GAMBAR DENGAN LOGIKA PRIORITAS --- #}
+        <div class="relative h-40 bg-gray-100 flex-shrink-0"> {# <-- Tambah flex-shrink-0 #}
+            {% if lap.foto_utama %}
+                {# Prioritas 1: Tampilkan gambar dari MEDIA jika sudah diupload #}
+                <img src="{{ lap.foto_utama.url }}" alt="{{ lap.nama_lapangan }}"
+                     class="w-full h-full object-cover">
+            {% elif lap.static_image_path %}
+                {# Prioritas 2: Tampilkan gambar dari STATIC jika path ditemukan oleh view #}
+                <img src="{% static lap.static_image_path %}" alt="{{ lap.nama_lapangan }} (Static)"
+                     class="w-full h-full object-cover">
+            {% else %}
+                 {# Prioritas 3: Tampilkan gambar default dari STATIC jika tidak ada keduanya #}
+                 <img src="{% static 'images/lapangan_default.jpg' %}" alt="{{ lap.nama_lapangan }} (Default)"
+                      class="w-full h-full object-cover opacity-70">
+                 {# Opsional: Tambahkan ikon jika gambar default ditampilkan #}
+                 <div class="absolute inset-0 flex items-center justify-center opacity-40">
+                    <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                 </div>
+            {% endif %}
+        </div>
+        {# --- AKHIR BAGIAN GAMBAR --- #}
+
+        <div class="p-4 flex flex-col flex-grow"> {# <-- Tambah flex flex-col flex-grow #}
+          <h3 class="text-lg font-semibold text-gray-900 flex-shrink-0">{{ lap.nama_lapangan }}</h3>
+          <p class="text-sm text-gray-600 flex-shrink-0">{{ lap.lokasi }}</p>
+          <p class="text-sm text-gray-500 mt-1 flex-grow">Fasilitas: {{ lap.fasilitas|default:"-"|truncatewords:4 }}</p> {# <-- truncatewords #}
+          <p class="font-medium text-[#a7bf6e] mt-2 flex-shrink-0">Rp {{ lap.harga_per_jam|floatformat:0 }}/jam</p>
+          <div class="flex items-center justify-between mt-2 flex-shrink-0">
+            <div class="flex items-center">
+              <span class="text-yellow-400">⭐</span>
+              <span class="ml-1 text-gray-700 text-sm">{{ lap.rating|floatformat:1|default:"0.0" }}</span> {# <-- Format rating #}
+              <span class="text-gray-500 text-xs ml-1">({{ lap.jumlah_ulasan }})</span>
+            </div>
+            <a href="{% url 'gallery:show_gallery' lap_id=lap.pk %}" 
+              class="text-sm text-[#a7bf6e] hover:underline">
+              Cek Lapangan →
+            </a>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <p class="text-gray-600 col-span-full text-center py-10">Tidak ada lapangan yang sesuai filter.</p>
+    {% endfor %}
+  </div>
+
+  <!-- Navigasi Page -->
+  <div class="flex justify-center items-center mt-8 mb-4 space-x-2">
+    {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}{% if selected_jenis != 'all' %}&jenis={{ selected_jenis }}{% endif %}{% if selected_rating != 'all' %}&rating={{ selected_rating }}{% endif %}"
+        class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">&laquo; Prev</a>
+    {% endif %}
+
+    {% for num in page_obj.paginator.page_range %}
+      {% if num == page_obj.number %}
+        <span class="px-3 py-1 bg-[#a7bf6e] text-white rounded">{{ num }}</span>
+      {% else %}
+        <a href="?page={{ num }}{% if selected_jenis != 'all' %}&jenis={{ selected_jenis }}{% endif %}{% if selected_rating != 'all' %}&rating={{ selected_rating }}{% endif %}"
+          class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">{{ num }}</a>
+      {% endif %}
+    {% endfor %}
+
+    {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}{% if selected_jenis != 'all' %}&jenis={{ selected_jenis }}{% endif %}{% if selected_rating != 'all' %}&rating={{ selected_rating }}{% endif %}"
+        class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Next &raquo;</a>
+    {% endif %}
+  </div>
+
+
+</section>
+
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const heroImage = document.getElementById("hero-image");
+    const images = [
+      "{% static 'images/image_header1.png' %}",
+      "{% static 'images/image_header2.png' %}",
+      "{% static 'images/image_header3.png' %}"
+    ];
+    let index = 0;
+
+    setInterval(() => {
+      heroImage.classList.add("opacity-0");
+      setTimeout(() => {
+        index = (index + 1) % images.length;
+        heroImage.src = images[index];
+        heroImage.classList.remove("opacity-0");
+      }, 500); // Waktu transisi
+    }, 5000); // Ganti gambar setiap 5 detik (sesuaikan jika perlu)
+  });
+</script>
+{% endblock %}

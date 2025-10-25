@@ -1,0 +1,26 @@
+<footer class="bg-[#B8D279] mt-10 py-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-gray-800">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+            
+            <div class="mb-6 md:mb-0">
+                <h4 class="text-3xl font-bold text-[#4F4F4F]">Lapang.<span class="text-white">in</span></h4>
+                <p class="text-lg font-medium text-gray-700 mt-1">#OlahragaTanpaDrama</p>
+                <div class="flex space-x-4 mt-4 text-2xl">
+                    <a href="#" class="hover:text-indigo-700 transition"><i class="fab fa-instagram"></i></a>
+                    <a href="#" class="hover:text-indigo-700 transition"><i class="fab fa-whatsapp"></i></a>
+                    <a href="#" class="hover:text-indigo-700 transition"><i class="fab fa-twitter"></i></a>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-x-12 gap-y-4">
+                <a href="{% url 'main:home' %}" class="font-medium hover:text-indigo-700 transition">Home</a> 
+                <a href="{% url 'community:show_community_page' %}" class="font-medium hover:text-indigo-700 transition">Community</a> 
+                <a href="{% url 'booking:my_bookings' %}" class="font-medium hover:text-indigo-700 transition">My Bookings</a> 
+            </div>
+        </div>
+
+        <div class="mt-8 pt-6 border-t border-[#4F4F4F] text-center text-sm text-gray-600">
+            Copyright copy right 2025@Lapang.in. All Rights Reserved
+        </div>
+    </div>
+</footer>

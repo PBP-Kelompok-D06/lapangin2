@@ -1,0 +1,295 @@
+<div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+    <div class="flex items-center gap-4 mb-6">
+        <div class="text-5xl font-bold text-[#4D5833]" id="overall-rating">0.0</div>
+        <div class="text-yellow-400 text-2xl" id="overall-stars">☆☆☆☆☆</div>
+    </div>
+
+    <div class="space-y-3 mb-6" id="rating-bars">
+    </div>
+
+    <div class="mt-12 flex flex-wrap gap-2" id="filter-chips">
+        <button 
+            class="filter-chip px-4 py-2 rounded-full border-2 font-medium transition-all duration-200 bg-[#4D5833] text-white border-[#4D5833]" 
+            data-rating="all"
+        >
+            Semua
+        </button>
+        <button 
+            class="filter-chip px-4 py-2 rounded-full border-2 font-medium transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:border-[#B8D279]" 
+            data-rating="5"
+        >
+            5 Bintang
+        </button>
+        <button 
+            class="filter-chip px-4 py-2 rounded-full border-2 font-medium transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:border-[#B8D279]" 
+            data-rating="4"
+        >
+            4 Bintang
+        </button>
+        <button 
+            class="filter-chip px-4 py-2 rounded-full border-2 font-medium transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:border-[#B8D279]" 
+            data-rating="3"
+        >
+            3 Bintang
+        </button>
+        <button 
+            class="filter-chip px-4 py-2 rounded-full border-2 font-medium transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:border-[#B8D279]" 
+            data-rating="2"
+        >
+            2 Bintang
+        </button>
+        <button 
+            class="filter-chip px-4 py-2 rounded-full border-2 font-medium transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:border-[#B8D279]" 
+            data-rating="1"
+        >
+            1 Bintang
+        </button>
+        <button 
+            class="filter-chip px-4 py-2 rounded-full border-2 font-medium transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:border-[#B8D279]" 
+            data-rating="terbaru"
+        >
+            Terbaru
+        </button>
+    </div>
+</div>
+<div id="HapusModal" 
+     class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-[100]">
+  <div class="bg-white rounded-xl shadow-2xl p-8 max-w-sm w-full text-center animate-fade-in">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Anda yakin ingin menghapus ulasan?</h2>
+    <p class="text-gray-600 mb-6">Ulasan yang dihapus tidak bisa dimunculkan kembali</p>
+    <div class="flex justify-center gap-4">
+      <button id="btnBatalLogin" 
+              class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400">
+        Batal
+      </button>
+      <a id="btnHapus" 
+         class="px-4 py-2 bg-[#F01000] text-white rounded-lg hover:bg-[#AA0B00] cursor-pointer">
+        Hapus
+      </a>
+    </div>
+  </div>
+</div>
+
+
+<script>
+function loadRatingStatistics(fieldId) {
+    
+    fetch(`/review/${fieldId}/statistics/`, {
+        headers: { "x-requested-with": "XMLHttpRequest" }
+    })
+    .then(res => res.json())
+    .then(data => {
+        const avgRating = data.average_rating || 0;
+        document.getElementById('overall-rating').textContent = avgRating.toFixed(1);
+        
+        const fullStars = Math.floor(avgRating);
+        let starsHTML = '★'.repeat(fullStars);
+        starsHTML += '☆'.repeat(5 - fullStars);
+        document.getElementById('overall-stars').innerHTML = starsHTML;
+        
+        const ratingBars = document.getElementById('rating-bars');
+        ratingBars.innerHTML = '';
+        
+        for (let i = 5; i >= 1; i--) {
+            const count = data.rating_counts[i] || 0;
+            const percentage = data.total_reviews > 0 ? (count / data.total_reviews * 100) : 0;
+            
+            const barDiv = document.createElement('div');
+            barDiv.className = 'flex items-center gap-3';
+            barDiv.innerHTML = `
+                <span class="text-sm font-medium text-gray-700 w-16">${i} <span class="text-yellow-400 text-2xl">★</span></span>
+                <div class="flex-1 bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div class="bg-[#B8D279] h-full rounded-full transition-all duration-500" style="width: ${percentage}%"></div>
+                </div>
+                <span class="text-sm text-gray-600 w-8 text-right">${count}</span>
+            `;
+            ratingBars.appendChild(barDiv);
+        }
+    })
+    .catch(err => console.error('Error loading statistics:', err));
+}
+loadRatingStatistics("{{ field.id }}");
+let currentFilter = 'all';
+
+document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', function() {
+        document.querySelectorAll('.filter-chip').forEach(c => {
+            c.classList.remove('bg-[#4D5833]', 'text-white', 'border-[#4D5833]');
+            c.classList.add('bg-white', 'text-gray-700', 'border-gray-300');
+        });
+        
+        this.classList.remove('bg-white', 'text-gray-700', 'border-gray-300');
+        this.classList.add('bg-[#4D5833]', 'text-white', 'border-[#4D5833]');
+        
+        currentFilter = this.dataset.rating;
+        
+        filterReviews(currentFilter);
+    });
+});
+
+function filterReviews(filter) {
+    const fieldId = window.currentFieldId || document.body.dataset.fieldId;
+    
+    if (!fieldId) {
+        console.error('Field ID not found');
+        return;
+    }
+    let url = `/review/${fieldId}/?filter=${filter}`;
+    
+    fetch(url, {
+        headers: { "x-requested-with": "XMLHttpRequest" }
+    })
+    .then(res => res.json())
+    .then(data => {
+    
+        const reviewsContainer = document.querySelector('.all-reviews');
+        if (!reviewsContainer) {
+            console.error('Reviews container not found');
+            return;
+        }
+        
+        reviewsContainer.innerHTML = '';
+        
+        if (data.reviews.length === 0) {
+            reviewsContainer.innerHTML = '<p class="text-gray-500 text-center py-8">Tidak ada ulasan untuk filter ini.</p>';
+            return;
+        }
+        const isGalleryPage = document.querySelector('.all-reviews').closest('#gallery-view');
+
+        let reviewsToShow = data.reviews;
+
+        if (isGalleryPage) {
+            reviewsToShow = data.reviews.slice(0, 4);
+        }
+
+        reviewsToShow.forEach(review => {
+            const container = document.createElement('div');
+            container.classList.add('container');
+            container.style.cssText = 'display: flex; flex-direction: column; align-items: flex-end; gap: 16px; align-self: stretch; width: 100%; padding-bottom: 24px; border-bottom: 1px solid #ddd;';
+            container.setAttribute('data-review-id', review.id);
+            
+            container.innerHTML = `
+                <div class="profile" style="position: relative; display: flex; align-items: center; gap: 24px; align-self: stretch;">
+                    <div class="h-8 w-8 rounded-full bg-[#CFE1A5] flex items-center justify-center text-[#4F4F4F] font-bold text-sm border-2 border-primary">
+                        ${review.user.charAt(0).toUpperCase()}
+                    </div>
+                    <div class="profile-name">
+                        <h1 style=" font-size: 20px; font-weight: 600; color: #212121;">
+                            ${review.user}
+                        </h1>
+                        <p style="font-size: 13px; color: #555;">
+                            ${review.created_at}
+                        </p>
+                    </div>
+                    ${review.is_owner ? `
+                        <button class="dots-btn" style="position: absolute; right: 0; background: none; border: none; font-size: 20px; cursor: pointer;">
+                            ⋮
+                        </button>
+                        <div class="dropdown-menu" style="display: none; position: absolute; right: 0; top: 28px; background: white; border: 1px solid #ddd; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 10;">
+                            <button class="edit-btn" style="display: block; width: 100%; text-align: left; padding: 8px 12px; background: none; border: none; cursor: pointer;">✏️ Edit</button>
+                            <button class="delete-btn" style="display: block; width: 100%; text-align: left; padding: 8px 12px; background: none; border: none; color: red; cursor: pointer;">🗑️ Hapus</button>
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="review-content" style="display: flex; width: 100%; flex-direction: column; align-items: flex-start; gap: 32px;">
+                    <p style="text-align: justify; font-size: 20px; color: #212121; font-weight: 400; line-height: 120%; letter-spacing: 0.4px;">
+                        ${review.content}
+                    </p>
+                    <div class="rating" style="color: #FFD700; font-size: 18px;">
+                        ${"★".repeat(review.rating)}${"☆".repeat(5 - review.rating)}
+                    </div>
+                </div>
+            `;
+            
+            reviewsContainer.appendChild(container);
+            
+            if (review.is_owner) {
+                const dotsBtn = container.querySelector('.dots-btn');
+                const dropdownMenu = container.querySelector('.dropdown-menu');
+                
+                dotsBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isVisible = dropdownMenu.style.display === 'block';
+                    document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
+                    dropdownMenu.style.display = isVisible ? 'none' : 'block';
+                });
+                
+                document.addEventListener('click', () => {
+                    dropdownMenu.style.display = 'none';
+                });
+                
+                dropdownMenu.querySelector('.delete-btn').addEventListener('click', () => {
+                const modal = document.getElementById('HapusModal');
+                const btnBatal = document.getElementById('btnBatalLogin');
+                const btnHapus = document.getElementById('btnHapus');
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+
+                btnBatal.onclick = () => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                };
+
+                btnHapus.onclick = () => {
+                    fetch(`/review/delete/${review.id}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    },
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                    if (data.success) {
+                        container.remove();
+                        showToast('Berhasil', 'Ulasan berhasil dihapus', 'success');
+                    } else {
+                        showToast('Gagal', data.error || 'Terjadi kesalahan', 'error');
+                    }
+
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    })
+                    .catch(() => {
+                    showToast('Gagal', 'Terjadi kesalahan jaringan', 'error');
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    });
+                };
+                });
+                
+                dropdownMenu.querySelector('.edit-btn').addEventListener('click', () => {
+                    const modal = document.getElementById('review-modal');
+                    const modalTitle = document.getElementById('modal-title');
+                    const contentInput = document.getElementById('content');
+                    const submitBtn = document.getElementById('submit-btn');
+                    const stars = modal.querySelectorAll('.star');
+
+                    modal.dataset.mode = 'edit';
+                    modal.dataset.reviewId = review.id;
+                    
+                    modalTitle.textContent = "Edit Ulasan";
+                    submitBtn.textContent = "Simpan";
+
+                    contentInput.value = review.content;
+                    selectedRating = review.rating;
+
+                    stars.forEach((s, i) => {
+                        s.textContent = i < review.rating ? '★' : '☆';
+                    });
+
+                    dropdownMenu.style.display = 'none';
+                    modal.style.display = 'flex';
+                });
+            }
+        });
+    })
+    .catch(err => console.error('Error filtering reviews:', err));
+}
+document.addEventListener('DOMContentLoaded', function() {
+    const fieldId = "{{ field.id }}";
+    if (fieldId) {
+        loadRatingStatistics(fieldId);
+    }
+});
+</script>

@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+{% block title %}Register - Lapangin{% endblock title %}
+
+{% block content %}
+<div class="bg-gray-50 w-full min-h-[80vh] flex items-center justify-center p-8">
+  <div class="max-w-md w-full">
+    <div class="bg-white rounded-xl border border-gray-200 p-6 sm:p-8 shadow-sm">
+      <div class="text-center mb-8">
+        <h1 class="text-2xl font-bold text-gray-900 mb-2">Join Us</h1>
+        <p class="text-gray-600">Create your Lapangin account</p>
+      </div>
+
+      <form id="register-form" class="space-y-5">
+        {% csrf_token %}
+        <div class="space-y-4">
+          {% for field in form %}
+            <div class="space-y-2">
+              <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                {{ field.label }}
+              </label>
+              {{ field }}
+              <div class="error-message text-xs text-red-500 mt-1">
+                  {% for error in field.errors %}
+                    {{ error }}
+                  {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+
+
+          {% if form.non_field_errors %}
+            <div class="non-field-errors px-4 py-3 rounded text-sm border bg-red-50 border-red-200 text-red-700">
+              {% for error in form.non_field_errors %}
+                {{ error }}
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+
+        <button type="submit" class="w-full bg-[#839556] text-white font-medium py-3 px-4 rounded-md hover:bg-[#A7BF6E] transition-colors">
+          Create Account
+        </button>
+      </form>
+
+      <div class="mt-6 text-center pt-6 border-t border-gray-200">
+        <p class="text-gray-500 text-sm">
+          Already have an account? 
+          <a href="{% url 'authbooking:login' %}" class="text-[#839556] hover:text-[#A7BF6E] font-medium">
+            Sign In
+          </a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% include 'toast.html' %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const form = document.getElementById("register-form");
+
+    function showToast(title, message, type="info", duration=3000) {
+        const toast = document.getElementById("toast-component");
+        const icon = document.getElementById("toast-icon");
+        const toastTitle = document.getElementById("toast-title");
+        const toastMessage = document.getElementById("toast-message");
+
+        toastTitle.innerText = title;
+        toastMessage.innerText = message;
+
+        let bgColor = "bg-gray-200";
+        icon.innerHTML = "ℹ️";
+
+        if(type === "success") { bgColor = "bg-green-100"; icon.innerHTML = "✅"; }
+        else if(type === "error") { bgColor = "bg-red-100"; icon.innerHTML = "❌"; }
+
+        toast.classList.remove("opacity-0", "translate-y-10", "pointer-events-none");
+        toast.classList.add("opacity-100", bgColor);
+
+        setTimeout(() => {
+            toast.classList.add("opacity-0", "translate-y-10", "pointer-events-none");
+            toast.classList.remove(bgColor);
+        }, duration);
+    }
+
+    form.addEventListener("submit", function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+
+        fetch("{% url 'authbooking:register' %}", {
+            method: "POST",
+            headers: {
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": form.querySelector('[name="csrfmiddlewaretoken"]').value
+            },
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            form.querySelectorAll(".error-message").forEach(el => el.textContent = "");
+            form.querySelectorAll(".non-field-errors").forEach(el => el.remove());
+
+            if(data.success) {
+                showToast("Register Berhasil", data.message, "success");
+                setTimeout(() => { window.location.href = data.redirect_url; }, 800);
+            } else {
+                for (let field in data.errors) {
+                    const input = document.getElementById(`id_${field}`);
+                    if(input) {
+                        const errDiv = input.parentNode.querySelector(".error-message");
+                        errDiv.textContent = data.errors[field].join(", ");
+                    } else {
+                        const div = document.createElement("div");
+                        div.classList.add("non-field-errors", "px-4", "py-3", "rounded", "text-sm", "border", "bg-red-50", "border-red-200", "text-red-700");
+                        div.textContent = data.errors[field].join(", ");
+                        form.prepend(div);
+                    }
+                }
+            }
+        })
+        .catch(err => console.error(err));
+    });
+
+    // Toggle field PEMILIK
+    const roleSelect = document.getElementById("id_role");
+    const rekeningField = document.getElementById("id_nomor_rekening")?.closest("div");
+    const whatsappField = document.getElementById("id_nomor_whatsapp")?.closest("div");
+
+    function togglePemilikFields() {
+        const isPemilik = roleSelect.value === "PEMILIK";
+        if(rekeningField) rekeningField.style.display = isPemilik ? "block" : "none";
+        if(whatsappField) whatsappField.style.display = isPemilik ? "block" : "none";
+    }
+
+    togglePemilikFields();
+    roleSelect.addEventListener("change", togglePemilikFields);
+});
+</script>
+{% endblock content %}

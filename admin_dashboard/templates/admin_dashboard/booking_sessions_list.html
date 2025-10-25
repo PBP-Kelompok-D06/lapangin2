@@ -1,0 +1,183 @@
+{% extends 'admin_dashboard/base.html' %}
+
+{% block title %}Kelola Booking Sessions{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-3xl font-bold mb-2 text-gray-800">Kelola Booking Sessions</h1>
+    <p class="text-gray-600">Buat dan kelola jadwal booking untuk lapangan Anda</p>
+</div>
+
+<!-- Filter Controls -->
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <form method="GET" class="flex flex-col md:flex-row gap-4">
+        <!-- Pilih Lapangan -->
+        <div class="flex-1">
+            <label for="lapangan_id" class="block text-sm font-medium text-gray-700 mb-2">Pilih Lapangan</label>
+            <select name="lapangan_id" id="lapangan_id" onchange="this.form.submit()"
+                    class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-primary">
+                <option value="">-- Pilih Lapangan --</option>
+                {% for lapangan in lapangan_list %}
+                <option value="{{ lapangan.pk }}" {% if selected_lapangan and lapangan.pk == selected_lapangan.pk %}selected{% endif %}>
+                    {{ lapangan.nama_lapangan }} ({{ lapangan.jenis_olahraga }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <!-- Pilih Tanggal -->
+        <div class="flex-1">
+            <label for="date" class="block text-sm font-medium text-gray-700 mb-2">Pilih Tanggal</label>
+            <input type="date" name="date" id="date" value="{{ selected_date_str }}"
+                   onchange="this.form.submit()"
+                   class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-primary">
+        </div>
+        
+        <!-- Tombol Tambah Session -->
+        <div class="flex items-end">
+            <a href="{% url 'admin_dashboard:booking_sessions_create' %}" 
+               class="bg-primary hover:bg-[#5A6B4A] text-white px-6 py-2 rounded-lg font-semibold transition whitespace-nowrap">
+                <i class="fas fa-plus mr-2"></i> Buat Session Baru
+            </a>
+        </div>
+    </form>
+</div>
+
+{% if selected_lapangan %}
+<!-- Info Lapangan -->
+<div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg mb-6">
+    <div class="flex items-start">
+        <i class="fas fa-info-circle text-blue-500 text-xl mr-3 mt-1"></i>
+        <div>
+            <p class="font-semibold text-blue-800">Lapangan: {{ selected_lapangan.nama_lapangan }}</p>
+            <p class="text-sm text-blue-700">Tanggal: {{ selected_date|date:"d F Y" }}</p>
+            <p class="text-sm text-blue-700">Harga: Rp {{ selected_lapangan.harga_per_jam|floatformat:0 }}/jam</p>
+        </div>
+    </div>
+</div>
+
+<!-- Daftar Sessions -->
+{% if slots %}
+<div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Waktu
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Info Booking
+                    </th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Aksi
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for slot in slots %}
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <i class="fas fa-clock text-primary mr-2"></i>
+                            <span class="text-sm font-medium text-gray-900">
+                                {{ slot.jam_mulai|time:"H:i" }} - {{ slot.jam_akhir|time:"H:i" }}
+                            </span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {% if slot.is_available and not slot.pending_booking %}
+                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            <i class="fas fa-check-circle mr-1"></i> Available
+                        </span>
+                        {% elif slot.pending_booking %}
+                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                            <i class="fas fa-clock mr-1"></i> Pending
+                        </span>
+                        {% else %}
+                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                            <i class="fas fa-times-circle mr-1"></i> Booked
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">
+                        {% if slot.pending_booking %}
+                        <div class="text-sm text-gray-900">
+                            <p class="font-medium">Booking #{{ slot.pending_booking.id }}</p>
+                            <p class="text-gray-500">{{ slot.pending_booking.user.username }}</p>
+                        </div>
+                        {% elif not slot.is_available %}
+                        <div class="text-sm text-gray-500">
+                            Slot telah dibooking
+                        </div>
+                        {% else %}
+                        <span class="text-sm text-gray-400">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        {% if slot.is_available and not slot.pending_booking %}
+                        <form method="POST" action="{% url 'admin_dashboard:booking_session_delete' slot.pk %}" 
+                              onsubmit="return confirm('Yakin ingin menghapus session ini?')" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" 
+                                    class="text-red-600 hover:text-red-900 font-medium text-sm">
+                                <i class="fas fa-trash mr-1"></i> Hapus
+                            </button>
+                        </form>
+                        {% else %}
+                        <span class="text-gray-400 text-sm">Tidak dapat dihapus</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<!-- Empty State -->
+<div class="bg-white rounded-lg shadow-md p-12 text-center">
+    <div class="mb-6">
+        <i class="fas fa-calendar-times text-gray-300 text-6xl"></i>
+    </div>
+    <h3 class="text-xl font-bold text-gray-800 mb-2">Belum Ada Session</h3>
+    <p class="text-gray-600 mb-6">Belum ada booking session untuk tanggal ini</p>
+    <a href="{% url 'admin_dashboard:booking_sessions_create' %}" 
+       class="inline-block bg-primary hover:bg-[#5A6B4A] text-white px-6 py-2 rounded-lg font-semibold transition">
+        Buat Session Baru
+    </a>
+</div>
+{% endif %}
+
+{% else %}
+<!-- Belum Pilih Lapangan -->
+<div class="bg-white rounded-lg shadow-md p-12 text-center">
+    <div class="mb-6">
+        <i class="fas fa-futbol text-gray-300 text-6xl"></i>
+    </div>
+    <h3 class="text-xl font-bold text-gray-800 mb-2">Pilih Lapangan</h3>
+    <p class="text-gray-600">Pilih lapangan terlebih dahulu untuk melihat booking sessions</p>
+</div>
+{% endif %}
+
+<!-- Info Box -->
+<div class="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+    <div class="flex items-start">
+        <i class="fas fa-lightbulb text-yellow-500 text-xl mr-3 mt-1"></i>
+        <div>
+            <h4 class="font-bold text-yellow-800 mb-2">Tips Mengelola Booking Sessions</h4>
+            <ul class="text-sm text-yellow-700 space-y-1">
+                <li>• <strong>Available:</strong> Session siap untuk dibooking oleh penyewa</li>
+                <li>• <strong>Pending:</strong> Sedang dalam proses booking, menunggu approve admin</li>
+                <li>• <strong>Booked:</strong> Sudah dibooking dan dikonfirmasi</li>
+                <li>• Session yang sudah dibooking tidak dapat dihapus</li>
+                <li>• Gunakan "Buat Session Baru" untuk menambah slot waktu booking</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

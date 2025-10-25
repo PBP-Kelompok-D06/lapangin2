@@ -1,0 +1,471 @@
+{# pbp-kelompok-d06/lapangin/lapangin-feat-admin-dashboard/community/templates/community_detail.html #}
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="bg-gray-50 mt-8 min-h-screen">
+  <div class="relative w-full h-96 rounded-xl overflow-hidden">
+    {% if community.community_image %}
+      <img src="{{ community.community_image.url }}" alt="{{ community.community_name }}" class="object-cover w-full h-full">
+    {% else %}
+      <div class="w-full h-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center">
+        <i class="fas fa-users text-white text-8xl"></i>
+      </div>
+    {% endif %}
+    <div class="absolute inset-0 bg-black bg-opacity-40 flex items-end p-8">
+      <div class="text-white">
+        <h1 class="text-4xl font-bold mb-2">{{ community.community_name }}</h1>
+        <p class="text-xl">{{ community.get_sports_type_display }} • {{ community.location }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="lg:col-span-2">
+      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Tentang Komunitas</h2>
+        <p class="text-gray-700 leading-relaxed mb-4">{{ community.description }}</p>
+        
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <div class="flex items-center text-gray-700">
+            <i class="fa fa-users mr-2 text-green-600"></i>
+            <span>{{ community.member_count }}/{{ community.max_member }} Anggota</span>
+          </div>
+          <div class="flex items-center text-gray-700">
+            <i class="fa fa-calendar mr-2 text-blue-600"></i>
+            <span>Dibuat: {{ community.date_added|date:"d M Y" }}</span>
+          </div>
+          <div class="flex items-center text-gray-700">
+            <i class="fa fa-user mr-2 text-purple-600"></i>
+            <span>Contact: {{ community.contact_person_name }}</span>
+          </div>
+          <div class="flex items-center text-gray-700">
+            <i class="fa fa-phone mr-2 text-orange-600"></i>
+            <span>{{ community.contact_phone|default:"N/A" }}</span>
+          </div>
+        </div>
+      </div>
+
+      {% if user.is_authenticated %}
+        {% if is_member %}
+          <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-6 rounded">
+            <div class="flex justify-between items-center">
+              <p class="text-green-800 font-semibold">
+                <i class="fas fa-check-circle mr-2"></i>
+                Anda adalah anggota komunitas ini
+              </p>
+              <form method="POST" action="{% url 'community:leave_community' community.pk %}">
+                {% csrf_token %}
+                <button type="submit" onclick="return confirm('Yakin ingin keluar dari komunitas ini?')"
+                        class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition">
+                  Keluar
+                </button>
+              </form>
+            </div>
+          </div>
+        {% else %}
+          <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded">
+            <div class="flex justify-between items-center">
+              <p class="text-blue-800 font-semibold">
+                <i class="fas fa-info-circle mr-2"></i>
+                Bergabunglah untuk berpartisipasi dalam forum
+              </p>
+              <form method="POST" action="{% url 'community:join_community' community.pk %}">
+                {% csrf_token %}
+                <button type="submit" 
+                        class="bg-primary hover:bg-[#5A6B4A] text-white px-6 py-2 rounded-lg font-semibold transition">
+                  <i class="fas fa-user-plus mr-2"></i> Gabung
+                </button>
+              </form>
+            </div>
+          </div>
+        {% endif %}
+      {% else %}
+        <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6 rounded">
+          <p class="text-yellow-800 font-semibold">
+            <i class="fas fa-lock mr-2"></i>
+            <a href="{% url 'authbooking:login' %}?next={{ request.path }}" class="underline hover:text-yellow-900">
+              Login
+            </a> untuk bergabung dan berpartisipasi dalam forum
+          </p>
+        </div>
+      {% endif %}
+
+      {% if is_member %}
+      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h3 class="text-xl font-bold mb-4">Buat Post Baru</h3>
+        
+        {# ✅ UBAH: Tambahkan ID ke form #}
+        <form method="POST" action="{% url 'community:post_create' community.pk %}" enctype="multipart/form-data" id="create-post-form">
+          {% csrf_token %}
+          <textarea name="content" rows="4" 
+                    placeholder="Bagikan sesuatu dengan komunitas..."
+                    class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-primary mb-3"
+                    required></textarea>
+          
+          <div class="flex justify-between items-center">
+            <label class="cursor-pointer text-primary hover:text-[#5A6B4A] transition">
+              <i class="fas fa-image mr-2"></i> Upload Foto
+              <input type="file" name="image" accept="image/*" class="hidden">
+            </label>
+            <button type="submit" 
+                    id="create-post-submit-btn" {# ✅ TAMBAHKAN ID #}
+                    class="bg-primary hover:bg-[#5A6B4A] text-white px-6 py-2 rounded-lg font-semibold transition">
+              <i class="fas fa-paper-plane mr-2"></i> Post
+            </button>
+          </div>
+          {# ✅ TAMBAHKAN: Area untuk pesan error AJAX #}
+          <div id="create-post-error" class="text-red-500 text-sm mt-2"></div>
+        </form>
+      </div>
+      {% endif %}
+
+      <div class="space-y-4">
+        <h3 class="text-2xl font-bold text-gray-800 mb-4">
+          <i class="fas fa-comments mr-2 text-primary"></i> Forum Diskusi
+        </h3>
+        
+        {# ✅ UBAH: Tambahkan ID ke container #}
+        <div id="posts-container" class="space-y-4">
+          {% if posts %}
+            {% for post in posts %}
+            {# ✅ TAMBAHKAN class="post-card" dan data-post-id #}
+            <div class="bg-white rounded-lg shadow-md p-6 post-card" data-post-id="{{ post.pk }}">
+              <div class ="flex items-start mb-4">
+                <div class="h-12 w-12 rounded-full bg-primary flex items-center justify-center text-white font-bold text-lg mr-4">
+                  {{ post.user.username.0|upper }}
+                </div>
+                <div class="flex-1">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <h4 class="font-bold text-gray-800">{{ post.user.username }}</h4>
+                      <p class="text-sm text-gray-500">{{ post.created_at|date:"d M Y, H:i" }}</p>
+                    </div>
+                    {% if post.user == user or user.profile.role == 'PEMILIK' %}
+                    <form method="POST" action="{% url 'community:post_delete' post.pk %}" class="inline" onsubmit="return confirm('Yakin ingin menghapus post ini?')">
+                      {% csrf_token %}
+                      <button type="submit"
+                              class="text-red-500 hover:text-red-700 text-sm">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </form>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <p class="text-gray-700 mb-4 whitespace-pre-line">{{ post.content }}</p>
+              
+              {% if post.image %}
+              <img src="{{ post.image.url }}" alt="Post image" class="rounded-lg max-h-96 w-full object-cover mb-4">
+              {% endif %}
+
+              <div class="border-t pt-4 mt-4">
+                <h5 class="font-semibold text-gray-700 mb-3">
+                  <i class="fas fa-comment mr-1"></i> Komentar (<span class="comment-count">{{ post.comments.count }}</span>) {# ✅ TAMBAHKAN class="comment-count" #}
+                </h5>
+                
+                {# ✅ TAMBAHKAN class="comment-list-container" #}
+                <div class="comment-list-container space-y-3">
+                  {% for comment in post.comments.all %}
+                  <div class="flex items-start mb-3 pl-4 border-l-2 border-gray-200">
+                    <div class="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-sm mr-3">
+                      {{ comment.user.username.0|upper }}
+                    </div>
+                    <div class="flex-1">
+                      <p class="text-sm">
+                        <span class="font-semibold text-gray-800">{{ comment.user.username }}</span>
+                        <span class="text-gray-500 text-xs ml-2">{{ comment.created_at|date:"d M Y, H:i" }}</span>
+                      </p>
+                      <p class="text-gray-700 text-sm mt-1">{{ comment.content }}</p>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+
+                {% if is_member %}
+                {# ✅ TAMBAHKAN class="form-create-comment" #}
+                <form method="POST" action="{% url 'community:comment_create' post.pk %}" class="mt-3 form-create-comment">
+                  {% csrf_token %}
+                  <div class="flex gap-2">
+                    <input type="text" name="content" 
+                           placeholder="Tulis komentar..."
+                           class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                           required>
+                    <button type="submit" 
+                            class="bg-primary hover:bg-[#5A6B4A] text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
+                      Kirim
+                    </button>
+                  </div>
+                  {# ✅ TAMBAHKAN class="comment-error" #}
+                  <div class="comment-error text-red-500 text-sm mt-1"></div>
+                </form>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            {# ✅ TAMBAHKAN ID #}
+            <div id="empty-posts-message" class="bg-white rounded-lg shadow-md p-12 text-center">
+              <i class="fas fa-comments text-gray-300 text-6xl mb-4"></i>
+              <h4 class="text-xl font-semibold text-gray-600 mb-2">Belum Ada Post</h4>
+              <p class="text-gray-500">
+                {% if is_member %}
+                Jadilah yang pertama membuat post!
+                {% else %}
+                Bergabunglah untuk melihat dan membuat post.
+                {% endif %}
+              </p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h3 class="text-lg font-semibold mb-4 text-gray-800">Komunitas Lainnya</h3>
+        <div class="space-y-3">
+          {% for other in communities %}
+          <a href="{% url 'community:show_detail_community' other.pk %}" 
+             class="block hover:bg-gray-50 p-3 rounded-lg transition">
+            <div class="flex items-center">
+              {% if other.community_image %}
+              <img src="{{ other.community_image.url }}" 
+                   class="w-12 h-12 rounded-lg object-cover mr-3"
+                   alt="{{ other.community_name }}">
+              {% else %}
+              <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center mr-3">
+                <i class="fas fa-users text-white"></i>
+              </div>
+              {% endif %}
+              <div class="flex-1">
+                <h4 class="font-semibold text-gray-800 text-sm">{{ other.community_name|truncatewords:3 }}</h4>
+                <p class="text-xs text-gray-500">
+                  {{ other.get_sports_type_display }} • {{ other.member_count }} anggota
+                </p>
+              </div>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+        <a href="{% url 'community:show_community_page' %}" 
+           class="block text-center mt-4 text-primary hover:underline text-sm font-semibold">
+          Lihat Semua Komunitas →
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+
+{# ✅ TAMBAHKAN: Blok script untuk logic AJAX #}
+{% block extra_script %}
+<script>
+    // Fungsi untuk mendapatkan CSRF token (wajib untuk POST AJAX)
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    // ✅ Fungsi untuk membuat HTML post baru (DOM Creation)
+    function createPostElement(postData) {
+        let imageHtml = '';
+        if (postData.image_url) {
+            imageHtml = `<img src="${postData.image_url}" alt="Post image" class="rounded-lg max-h-96 w-full object-cover mb-4">`;
+        }
+
+        const deleteFormHtml = `
+            <form method="POST" action="${postData.delete_url}" class="inline" onsubmit="return confirm('Yakin ingin menghapus post ini?')">
+                <input type="hidden" name="csrfmiddlewaretoken" value="${csrftoken}">
+                <button type="submit" class="text-red-500 hover:text-red-700 text-sm">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </form>
+        `;
+
+        const newPost = document.createElement('div');
+        newPost.className = 'bg-white rounded-lg shadow-md p-6 post-card';
+        newPost.setAttribute('data-post-id', postData.pk);
+        newPost.innerHTML = `
+            <div class="flex items-start mb-4">
+              <div class="h-12 w-12 rounded-full bg-primary flex items-center justify-center text-white font-bold text-lg mr-4">
+                ${postData.user.initial}
+              </div>
+              <div class="flex-1">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <h4 class="font-bold text-gray-800">${postData.user.username}</h4>
+                    <p class="text-sm text-gray-500">${postData.created_at}</p>
+                  </div>
+                  ${deleteFormHtml}
+                </div>
+              </div>
+            </div>
+            <p class="text-gray-700 mb-4 whitespace-pre-line">${postData.content}</p>
+            ${imageHtml}
+            <div class="border-t pt-4 mt-4">
+              <h5 class="font-semibold text-gray-700 mb-3">
+                <i class="fas fa-comment mr-1"></i> Komentar (<span class="comment-count">0</span>)
+              </h5>
+              <div class="comment-list-container space-y-3">
+                </div>
+              <form method="POST" action="${postData.comment_url}" class="mt-3 form-create-comment">
+                <input type="hidden" name="csrfmiddlewaretoken" value="${csrftoken}">
+                <div class="flex gap-2">
+                  <input type="text" name="content" placeholder="Tulis komentar..."
+                         class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" required>
+                  <button type="submit" class="bg-primary hover:bg-[#5A6B4A] text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
+                    Kirim
+                  </button>
+                </div>
+                <div class="comment-error text-red-500 text-sm mt-1"></div>
+              </form>
+            </div>
+        `;
+        return newPost;
+    }
+
+    // ✅ Fungsi untuk membuat HTML comment baru (DOM Creation)
+    function createCommentElement(commentData) {
+        const newComment = document.createElement('div');
+        newComment.className = 'flex items-start mb-3 pl-4 border-l-2 border-gray-200';
+        newComment.innerHTML = `
+            <div class="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-sm mr-3">
+              ${commentData.user.initial}
+            </div>
+            <div class="flex-1">
+              <p class="text-sm">
+                <span class="font-semibold text-gray-800">${commentData.user.username}</span>
+                <span class="text-gray-500 text-xs ml-2">${commentData.created_at}</span>
+              </p>
+              <p class="text-gray-700 text-sm mt-1">${commentData.content}</p>
+            </div>
+        `;
+        return newComment;
+    }
+
+
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // --- 1. AJAX untuk CREATE POST ---
+        const postForm = document.getElementById('create-post-form');
+        const postsContainer = document.getElementById('posts-container');
+        const postError = document.getElementById('create-post-error');
+        const postSubmitBtn = document.getElementById('create-post-submit-btn');
+        const emptyMessage = document.getElementById('empty-posts-message');
+
+        if (postForm) {
+            postForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const formData = new FormData(postForm);
+                const originalBtnText = postSubmitBtn.innerHTML;
+                postSubmitBtn.innerHTML = 'Memposting...';
+                postSubmitBtn.disabled = true;
+                postError.textContent = '';
+
+                try {
+                    const response = await fetch(postForm.action, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': csrftoken,
+                            'X-Requested-With': 'XMLHttpRequest', // Tandai sebagai AJAX
+                        },
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        // Berhasil!
+                        const newPostElement = createPostElement(data.post);
+                        postsContainer.prepend(newPostElement); // Tambahkan post baru di atas
+                        postForm.reset(); // Kosongkan form
+                        if (emptyMessage) {
+                            emptyMessage.style.display = 'none'; // Sembunyikan pesan "Belum ada post"
+                        }
+                    } else {
+                        // Tampilkan error
+                        postError.textContent = data.error || 'Terjadi kesalahan.';
+                    }
+                } catch (err) {
+                    postError.textContent = 'Tidak dapat terhubung ke server.';
+                } finally {
+                    postSubmitBtn.innerHTML = originalBtnText;
+                    postSubmitBtn.disabled = false;
+                }
+            });
+        }
+
+
+        // --- 2. AJAX untuk CREATE COMMENT ---
+        // Kita gunakan event delegation karena form komentar dibuat dinamis
+        postsContainer.addEventListener('submit', async (e) => {
+            // Cek apakah yang disubmit adalah form komentar
+            if (e.target.classList.contains('form-create-comment')) {
+                e.preventDefault();
+
+                const commentForm = e.target;
+                const submitBtn = commentForm.querySelector('button[type="submit"]');
+                const errorDiv = commentForm.querySelector('.comment-error');
+                const formData = new FormData(commentForm);
+
+                const originalBtnText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '...';
+                submitBtn.disabled = true;
+                if(errorDiv) errorDiv.textContent = '';
+
+                try {
+                    const response = await fetch(commentForm.action, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': csrftoken,
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        // Berhasil!
+                        const commentList = commentForm.closest('.post-card').querySelector('.comment-list-container');
+                        const newCommentElement = createCommentElement(data.comment);
+                        commentList.append(newCommentElement); // Tambahkan komentar baru di bawah
+                        commentForm.reset(); // Kosongkan form
+
+                        // Update comment count
+                        const countSpan = commentForm.closest('.post-card').querySelector('.comment-count');
+                        if (countSpan) {
+                            countSpan.textContent = parseInt(countSpan.textContent) + 1;
+                        }
+
+                    } else {
+                        if(errorDiv) errorDiv.textContent = data.error || 'Terjadi kesalahan.';
+                    }
+
+                } catch (err) {
+                    if(errorDiv) errorDiv.textContent = 'Tidak dapat terhubung ke server.';
+                } finally {
+                    submitBtn.innerHTML = originalBtnText;
+                    submitBtn.disabled = false;
+                }
+            }
+        });
+
+    });
+</script>
+{% endblock extra_script %}

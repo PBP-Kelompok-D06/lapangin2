@@ -1,0 +1,287 @@
+<div id="review-modal"
+     data-mode="add"
+     data-field-id="{{ field.id }}" 
+     data-review-id="{{ review.id }}"
+     style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4); justify-content: center; align-items: center; z-index: 999;">
+
+  <div style="background: white; border-radius: 12px; padding: 24px; width: 400px; position: relative;">
+    <h2 id="modal-title" style="font-size: 24px; font-weight: 600; color: #4D5833; margin-bottom: 16px;">
+      Tambah Ulasan
+    </h2>
+
+    <form id="form-review">
+      {% csrf_token %}
+      <label for="rating" style="display: block; margin-bottom: 8px;">Beri Rating:</label>
+      <div id="star-rating" style="display: flex; gap: 8px; margin-bottom: 16px;">
+        {% for i in "12345" %}
+          <span class="star" data-value="{{ forloop.counter }}" style="font-size: 24px; cursor: pointer; color: #FFD700">☆</span>
+        {% endfor %}
+      </div>
+
+      <label for="content">Ulasan:</label>
+      <textarea id="content" name="content"
+                style="width: 100%; height: 80px; border: 1px solid #ccc; border-radius: 6px; padding: 8px; margin-top: 4px;"></textarea>
+
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+        <button type="button" onclick="closeModal()" class="bg-[#ccc] hover:bg-[#4f4f4f] text-white font-semibold py-3 px-8 rounded-md shadow-md transition">Batal</button>
+        <button type="submit" id="submit-btn"class="bg-[#a7bf6e] hover:bg-[#4f4f4f] text-white font-semibold py-3 px-8 rounded-md shadow-md transition">Kirim</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let selectedRating = 0;
+
+document.querySelectorAll('.star').forEach(star => {
+  star.addEventListener('click', () => {
+    selectedRating = star.dataset.value;
+    document.querySelectorAll('.star').forEach(s => s.textContent = '☆');
+    for (let i = 0; i < selectedRating; i++) {
+      document.querySelectorAll('.star')[i].textContent = '★';
+    }
+  });
+});
+
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+
+document.getElementById('form-review').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const modal = document.getElementById('review-modal');
+  const mode = modal.dataset.mode;
+  const reviewId = modal.dataset.reviewId;
+  const fieldId = modal.dataset.fieldId;
+  const csrftoken = getCookie('csrftoken');
+
+  if (selectedRating === 0) {
+    showToast("Perhatian", "Silakan pilih rating terlebih dahulu!", "error", 4000);
+    return;
+  }
+
+  const contentValue = document.getElementById('content').value.trim();
+  if (!contentValue) {
+    showToast("Perhatian", "Silakan isi ulasan terlebih dahulu!", "error", 4000);
+    return;
+  }
+
+  const data = { rating: parseInt(selectedRating), content: contentValue };
+  
+  const url = mode === 'edit'
+    ? `/review/edit/${reviewId}/`
+    : `/review/${fieldId}/add/`;
+
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrftoken,
+      'x-requested-with': 'XMLHttpRequest'
+    },
+    body: JSON.stringify(data)
+  })
+  .then(res => {
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
+    return res.json();
+  })
+  .then(data => {
+    if (data.success) {
+      showToast("Berhasil", mode === "edit" ? "Ulasan diperbarui" : "Ulasan ditambahkan", "success");
+      closeModal();
+      loadRatingStatistics(fieldId);
+
+      if (mode === 'edit') {
+        // Update review yang sudah ada
+        const reviewContainer = document.querySelector(`[data-review-id="${reviewId}"]`);
+        if (reviewContainer) {
+          reviewContainer.querySelector('.review-content p').innerText = data.updated.content;
+          reviewContainer.querySelector('.rating').innerHTML =
+            "★".repeat(data.updated.rating) + "☆".repeat(5 - data.updated.rating);
+        }
+        
+      } else {
+        addReviewToDOM(data.review);
+      }
+    } else {
+      showToast("Gagal", data.error || "Terjadi kesalahan", "error");
+    }
+  })
+  .catch(err => {
+    console.error('Error:', err);
+    showToast("Gagal", `Terjadi kesalahan: ${err.message}`, "error");
+  });
+});
+
+function addReviewToDOM(review) {
+  const container = document.createElement('div');
+  container.classList.add('container');
+  container.setAttribute('data-review-id', review.id);
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+  container.style.alignItems = 'flex-end';
+  container.style.gap = '16px';
+  container.style.alignSelf = 'stretch';
+  container.style.width = '100%';
+  container.style.paddingBottom = '24px';
+  container.style.borderBottom = '1px solid #ddd';
+
+  container.innerHTML = `
+    <div class="profile" style="position: relative; display: flex; align-items: center; gap: 24px; align-self: stretch;">
+      <div class="h-8 w-8 rounded-full bg-[#CFE1A5] flex items-center justify-center text-[#4F4F4F] font-bold text-sm border-2 border-primary" style="width: 32px; height: 32px; border-radius: 50%; background: #CFE1A5; display: flex; align-items: center; justify-content: center; color: #4F4F4F; font-weight: bold; font-size: 14px; border: 2px solid #B8D279;">
+        ${review.user.charAt(0).toUpperCase()}
+      </div>
+      <div class="profile-name">
+        <h1 style=" font-size: 24px; font-weight: 600; color: #212121; line-height: 120%;">
+          ${review.user}
+        </h1>
+        <p style="font-family: Montserrat; font-size: 13px; font-weight: 400; line-height: 120%; letter-spacing: 0.26px; color: #555;">
+          ${review.created_at}
+        </p>
+      </div>
+    </div>
+
+    <div class="review-content" style="display: flex; width: 100%; flex-direction: column; align-items: flex-start; gap: 32px;">
+      <p style="text-align: justify; font-size: 20px; color: #212121; font-weight: 400; line-height: 120%; letter-spacing: 0.4px;">
+        ${review.content}
+      </p>
+      <div class="rating" style="color: #FFD700; font-size: 18px;">
+        ${"★".repeat(review.rating)}${"☆".repeat(5 - review.rating)}
+      </div>
+    </div>
+  `;
+
+  if (review.is_owner) {
+    const profileDiv = container.querySelector('.profile');
+    
+    const dotsBtn = document.createElement('button');
+    dotsBtn.classList.add('dots-btn');
+    dotsBtn.innerHTML = '⋮';
+    dotsBtn.style.position = 'absolute';
+    dotsBtn.style.right = '0';
+    dotsBtn.style.background = 'none';
+    dotsBtn.style.border = 'none';
+    dotsBtn.style.fontSize = '20px';
+    dotsBtn.style.cursor = 'pointer';
+
+    const dropdownMenu = document.createElement('div');
+    dropdownMenu.classList.add('dropdown-menu');
+    dropdownMenu.style.display = 'none';
+    dropdownMenu.style.position = 'absolute';
+    dropdownMenu.style.right = '0';
+    dropdownMenu.style.top = '28px';
+    dropdownMenu.style.background = 'white';
+    dropdownMenu.style.border = '1px solid #ddd';
+    dropdownMenu.style.borderRadius = '6px';
+    dropdownMenu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+    dropdownMenu.style.zIndex = '10';
+
+    dropdownMenu.innerHTML = `
+      <button class="edit-btn" style="display: block; width: 100%; text-align: left; padding: 8px 12px; background: none; border: none; cursor: pointer;">✏️ Edit</button>
+      <button class="delete-btn" style="display: block; width: 100%; text-align: left; padding: 8px 12px; background: none; border: none; color: red; cursor: pointer;">🗑️ Hapus</button>
+    `;
+
+    profileDiv.appendChild(dotsBtn);
+    profileDiv.appendChild(dropdownMenu);
+
+    // Event listeners untuk dropdown
+    dotsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isVisible = dropdownMenu.style.display === 'block';
+      document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
+      dropdownMenu.style.display = isVisible ? 'none' : 'block';
+    });
+
+    document.addEventListener('click', () => {
+      dropdownMenu.style.display = 'none';
+    });
+
+    dropdownMenu.querySelector('.delete-btn').addEventListener('click', () => {
+      const modal = document.getElementById('HapusModal');
+      const btnBatal = document.getElementById('btnBatalLogin');
+      const btnHapus = document.getElementById('btnHapus');
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      btnBatal.onclick = () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      };
+      const reviewId = modal.dataset.reviewId;
+
+      btnHapus.onclick = () => {
+        fetch(`/review/delete/${reviewId}/`, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+          },
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            container.remove();
+            showToast('Berhasil', 'Ulasan berhasil dihapus', 'success');
+          } else {
+            showToast('Gagal', data.error || 'Terjadi kesalahan', 'error');
+          }
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+          loadRatingStatistics(fieldId);
+
+        })
+        .catch(() => {
+          showToast('Gagal', 'Terjadi kesalahan jaringan', 'error');
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+        });
+      };
+    });
+
+    dropdownMenu.querySelector('.edit-btn').addEventListener('click', () => {
+      const modal = document.getElementById('review-modal');
+      const modalTitle = document.getElementById('modal-title');
+      const contentInput = document.getElementById('content');
+      const submitBtn = document.getElementById('submit-btn');
+      const stars = modal.querySelectorAll('.star');
+
+      modal.dataset.mode = 'edit';
+      modal.dataset.reviewId = review.id;
+      
+      modalTitle.textContent = "Edit Ulasan";
+      submitBtn.textContent = "Simpan";
+
+      contentInput.value = review.content;
+      selectedRating = review.rating;
+
+      stars.forEach((s, i) => {
+        s.textContent = i < review.rating ? '★' : '☆';
+      });
+
+      dropdownMenu.style.display = 'none';
+      modal.style.display = 'flex';
+      loadRatingStatistics(fieldId);
+
+    });
+  }
+
+  const allReviewsContainer = document.querySelector('.all-reviews');
+  allReviewsContainer.insertBefore(container, allReviewsContainer.firstChild);
+}
+</script>

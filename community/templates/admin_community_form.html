@@ -1,0 +1,165 @@
+{% extends 'admin_dashboard/base.html' %}
+
+{% block title %}{% if community %}Edit{% else %}Buat{% endif %} Komunitas{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6">{% if community %}Edit{% else %}Buat{% endif %} Komunitas</h1>
+    
+    <form method="POST" enctype="multipart/form-data" class="bg-white rounded-lg shadow-md p-6">
+        {% csrf_token %}
+        
+        <div class="mb-6">
+            <label class="block text-gray-700 font-bold mb-2">NAMA KOMUNITAS</label>
+            <input type="text" name="community_name" 
+                   value="{% if community %}{{ community.community_name }}{% endif %}"
+                   placeholder="Contoh: Pacil Badminton Club" 
+                   class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-[#86A96F]" 
+                   required>
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-gray-700 font-bold mb-2">JENIS OLAHRAGA</label>
+            <select name="sports_type" 
+                    class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-[#86A96F]" 
+                    required>
+                <option value="">Pilih Jenis Olahraga</option>
+                <option value="futsal" {% if community and community.sports_type == 'futsal' %}selected{% endif %}>Futsal</option>
+                <option value="basket" {% if community and community.sports_type == 'basket' %}selected{% endif %}>Basket</option>
+                <option value="bulutangkis" {% if community and community.sports_type == 'bulutangkis' %}selected{% endif %}>Bulutangkis</option>
+            </select>
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-gray-700 font-bold mb-2">LOKASI</label>
+            <input type="text" name="location" 
+                   value="{% if community %}{{ community.location }}{% endif %}"
+                   placeholder="Contoh: Depok, Jakarta Selatan" 
+                   class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-[#86A96F]" 
+                   required>
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-gray-700 font-bold mb-2">MAKSIMAL ANGGOTA</label>
+            <input type="number" name="max_member" 
+                   value="{% if community %}{{ community.max_member }}{% else %}50{% endif %}"
+                   min="1"
+                   class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-[#86A96F]" 
+                   required>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-gray-700 font-bold mb-2">NAMA CONTACT PERSON</label>
+                <input type="text" name="contact_person_name" 
+                       value="{% if community %}{{ community.contact_person_name }}{% else %}{{ user.username }}{% endif %}"
+                       class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-[#86A96F]">
+            </div>
+            <div>
+                <label class="block text-gray-700 font-bold mb-2">NOMOR TELEPON</label>
+                <input type="text" name="contact_phone" 
+                       value="{% if community %}{{ community.contact_phone }}{% endif %}"
+                       placeholder="08123456789"
+                       class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-[#86A96F]">
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-gray-700 font-bold mb-2">FOTO KOMUNITAS</label>
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center" id="uploadBox">
+                
+                {% if community and community.community_image %}
+                    <img src="{{ community.community_image.url }}" alt="Preview" id="imagePreview" class="mx-auto mb-4 max-h-48 rounded-lg">
+                    
+                    <label for="fotoInput" class="cursor-pointer bg-[#86A96F] text-white px-6 py-2 rounded-lg inline-block hover:bg-[#5A6B4A] transition">
+                        Ganti Foto
+                    </label>
+                    <p class="text-gray-500 text-sm mt-2">Format: JPG, PNG (Max 5MB)</p>
+                
+                {% else %}
+                    <div id="placeholderGroup">
+                        <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                        </svg>
+                        <label for="fotoInput" class="cursor-pointer bg-[#86A96F] text-white px-6 py-2 rounded-lg inline-block hover:bg-[#5A6B4A] transition">
+                            Upload Foto
+                        </label>
+                    </div>
+                    <p id="placeholderHelp" class="text-gray-500 text-sm mt-2">Format: JPG, PNG (Max 5MB)</D>
+                {% endif %}
+        
+                <input type="file" name="community_image" id="fotoInput" accept="image/*" class="hidden">
+        
+                <div id="changeButtonContainer"></div>
+            </div>
+        </div>
+        <div class="mb-6">
+            <label class="block text-gray-700 font-bold mb-2">DESKRIPSI</label>
+            <textarea name="description" rows="4" 
+                      placeholder="Ceritakan tentang komunitas ini..."
+                      class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-[#86A96F]" 
+                      required>{% if community %}{{ community.description }}{% endif %}</textarea>
+            <p class="text-gray-500 text-sm mt-1">Komunitas akan memiliki forum diskusi internal di website</p>
+        </div>
+
+        <div class="flex space-x-4">
+            <a href="{% url 'community:admin_community_list' %}"
+               class="flex-1 text-center bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-semibold transition">
+              <i class="fas fa-arrow-left mr-2"></i> BATAL
+            </a>
+            <button type="submit" 
+                    class="flex-1 bg-primary hover:bg-[#5A6B4A] text-white py-3 rounded-lg font-semibold transition">
+                <i class="fas fa-save mr-2"></i> SIMPAN
+            </button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('fotoInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            let preview = document.getElementById('imagePreview');
+            
+            if (preview) {
+                // Kasus 1: Preview sudah ada (Mode Edit atau ganti foto lagi)
+                preview.src = e.target.result;
+            } else {
+                // Kasus 2: Preview belum ada (Mode Create, upload pertama kali)
+                
+                // Sembunyikan placeholder
+                const placeholderGroup = document.getElementById('placeholderGroup');
+                const placeholderHelp = document.getElementById('placeholderHelp');
+                if (placeholderGroup) placeholderGroup.style.display = 'none';
+                if (placeholderHelp) placeholderHelp.style.display = 'none';
+
+                // Buat elemen img preview baru
+                preview = document.createElement('img');
+                preview.id = 'imagePreview';
+                preview.className = 'mx-auto mb-4 max-h-48 rounded-lg';
+                preview.src = e.target.result;
+                
+                // Masukkan preview ke dalam box
+                const uploadBox = document.getElementById('uploadBox');
+                uploadBox.prepend(preview); // Taruh di paling atas dalam box
+
+                // Buat dan tampilkan tombol "Ganti Foto" + help text
+                const changeButtonContainer = document.getElementById('changeButtonContainer');
+                changeButtonContainer.innerHTML = `
+                    <label for="fotoInput" class="cursor-pointer bg-[#86A96F] text-white px-6 py-2 rounded-lg inline-block hover:bg-[#5A6B4A] transition">
+                        Ganti Foto
+                    </label>
+                    <p class="text-gray-500 text-sm mt-2">Format: JPG, PNG (Max 5MB)</p>
+                `;
+            }
+        }
+        reader.readAsDataURL(file);
+    });
+</script>
+{% endblock %}

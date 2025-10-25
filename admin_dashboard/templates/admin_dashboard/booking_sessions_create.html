@@ -1,0 +1,75 @@
+{% extends 'admin_dashboard/base.html' %}
+
+{% block title %}Buat Booking Sessions{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6 text-gray-800">Buat Booking Sessions Baru</h1>
+    
+    <form method="POST" class="bg-white rounded-lg shadow-md p-6">
+        {% csrf_token %}
+        
+        <!-- Pilih Lapangan -->
+        <div class="mb-6">
+            <label class="block text-gray-700 font-bold mb-2">LAPANGAN</label>
+            <select name="lapangan_id" required
+                    class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-primary">
+                <option value="">-- Pilih Lapangan --</option>
+                {% for lapangan in lapangan_list %}
+                <option value="{{ lapangan.pk }}">
+                    {{ lapangan.nama_lapangan }} ({{ lapangan.jenis_olahraga }}) - Rp {{ lapangan.harga_per_jam|floatformat:0 }}/jam
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Rentang Tanggal -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-gray-700 font-bold mb-2">TANGGAL MULAI</label>
+                <input type="date" name="start_date" value="{{ today }}" min="{{ today }}" required
+                       class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-primary">
+            </div>
+            <div>
+                <label class="block text-gray-700 font-bold mb-2">TANGGAL AKHIR</label>
+                <input type="date" name="end_date" value="{{ today }}" min="{{ today }}" required
+                       class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-primary">
+            </div>
+        </div>
+
+        <!-- Rentang Waktu -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-gray-700 font-bold mb-2">JAM MULAI</label>
+                <input type="time" name="jam_mulai" value="08:00" required
+                       class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-primary">
+            </div>
+            <div>
+                <label class="block text-gray-700 font-bold mb-2">JAM AKHIR</label>
+                <input type="time" name="jam_akhir" value="09:00" required
+                       class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-primary">
+            </div>
+        </div>
+
+        <!-- Info Box -->
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg mb-6">
+            <p class="text-blue-700 text-sm">
+                <i class="fas fa-info-circle mr-2"></i>
+                Session akan dibuat untuk setiap hari dalam rentang tanggal yang dipilih. Jika session sudah ada, akan dilewati.
+            </p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex space-x-4">
+            <button type="button" onclick="window.location.href='{% url 'admin_dashboard:booking_sessions_list' %}'" 
+                    class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-semibold transition">
+                <i class="fas fa-arrow-left mr-2"></i> Batal
+            </button>
+            <button type="submit" 
+                    class="flex-1 bg-primary hover:bg-[#5A6B4A] text-white py-3 rounded-lg font-semibold transition">
+                <i class="fas fa-save mr-2"></i> Buat Sessions
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'admin_dashboard/base.html' %}
+
+{% block title %}Hapus Lapangan{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-lg shadow-md p-8">
+        <div class="text-center mb-6">
+            <i class="fas fa-exclamation-triangle text-red-500 text-6xl mb-4"></i>
+            <h2 class="text-2xl font-bold mb-2">Konfirmasi Hapus Lapangan</h2>
+            <p class="text-gray-600">Apakah Anda yakin ingin menghapus lapangan ini?</p>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 class="font-bold text-lg mb-2">{{ lapangan.nama }}</h3>
+            <p class="text-gray-600">{{ lapangan.get_jenis_display }} - {{ lapangan.lokasi }}</p>
+            <p class="text-gray-600">Rp {{ lapangan.harga_per_jam|floatformat:0 }}/jam</p>
+        </div>
+
+        <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+            <p class="text-red-700 font-semibold">
+                <i class="fas fa-info-circle mr-2"></i>
+                Perhatian: Tindakan ini tidak dapat dibatalkan!
+            </p>
+        </div>
+
+        <form method="POST" class="flex space-x-4">
+            {% csrf_token %}
+            <button type="button" onclick="window.location.href='{% url 'admin_dashboard:lapangan_list' %}'" 
+                    class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-semibold transition">
+                Batal
+            </button>
+            <button type="submit" 
+                    class="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold transition">
+                Ya, Hapus Lapangan
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

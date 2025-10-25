@@ -1,0 +1,101 @@
+id,nama_lapangan,jenis_olahraga,lokasi,harga_per_jam,fasilitas,rating,jumlah_ulasan
+1,Futsal Arena Senayan,Futsal,Jakarta,150000,"Parkir, Musholla, Kantin",0,0
+2,Galaxy Futsal Center,Futsal,Bandung,120000,"Parkir, Toilet, Locker",0,0
+3,Cipete Futsal Hall,Futsal,Jakarta,180000,"Tribun, Kafe, Parkir",0,0
+4,Mega Futsal Bekasi,Futsal,Bekasi,100000,"AC, Toilet, Musholla",0,0
+5,Citra Futsal Bandung,Futsal,Bandung,130000,"Parkir, Tribun, Kantin",0,0
+6,Sportivo Futsal Depok,Futsal,Depok,140000,"Locker, Musholla, Parkir",0,0
+7,Futsal 88 Tangerang,Futsal,Tangerang,110000,"Toilet, Kantin, Musholla",0,0
+8,Prima Futsal Malang,Futsal,Malang,160000,"Parkir, AC, Tribun",0,0
+9,Bintang Futsal Surabaya,Futsal,Surabaya,170000,"Locker, Parkir, Kafe",0,0
+10,Futsal Mandiri Jogja,Futsal,Yogyakarta,150000,"Musholla, Parkir, Kantin",0,0
+11,Champion Futsal Semarang,Futsal,Semarang,120000,"Tribun, AC, Parkir",0,0
+12,Futsal Galaxy Makassar,Futsal,Makassar,130000,"Locker, Toilet, Musholla",0,0
+13,Victory Futsal Palembang,Futsal,Palembang,100000,"Parkir, Kantin, Tribun",0,0
+14,Cendana Futsal Medan,Futsal,Medan,140000,"AC, Locker, Parkir",0,0
+15,Delta Futsal Sidoarjo,Futsal,Sidoarjo,120000,"Parkir, Kantin, Toilet",0,0
+16,Metro Futsal Pontianak,Futsal,Pontianak,160000,"Tribun, Musholla, Parkir",0,0
+17,Royal Futsal Bali,Futsal,Denpasar,180000,"AC, Locker, Kafe",0,0
+18,Platinum Futsal Cirebon,Futsal,Cirebon,150000,"Parkir, Musholla, Kantin",0,0
+19,SportOne Futsal Balikpapan,Futsal,Balikpapan,130000,"Tribun, Toilet, Parkir",0,0
+20,Elite Futsal Pekanbaru,Futsal,Pekanbaru,140000,"AC, Parkir, Musholla",0,0
+21,GOR Badminton Kukusan,Bulutangkis,Depok,45000,”Toilet, Parkir, Musholla”,0,0
+22,GOR Bulutangkis PB Sehati,Bulutangkis,Depok,35000,"Parkir, Kantin",0,0
+23,Smash Point Badminton Hall,Bulutangkis,Jakarta Barat,95000,"Parkir, Toilet, Musholla, Kantin, Ruang Ganti",0,0
+24,GOR Swadaya 8 (Yokstone),Bulutangkis,Depok,40000, "Parkir, Toilet, Mushola",0,0
+25,Kans Badminton Hall,Bulutangkis,Depok,50000, "Toilet, Parkir,Mushola, Kantin",0,0
+26,GOR Bulutangkis Hafa New99,Bulutangkis,Depok,45000,"Toilet, Parkir, Mushola, Kantin, Shower",0,0
+27,Lapangan Gedung Serba Guna RW4 Bintara Jaya,Bulutangkis,Bekasi,32000,"Parkir, Toilet",0,0
+28,GOR OASIS PB BHINNEKA,Bulutangkis,Bekasi,50000, "Toilet, Parkir, Lampu",0,0
+29,Gor Areman,Bulutangkis,Depok,30000,"Parkir Motor & Mobil, Musholla, Ruang Ganti",0,0
+30,GBK Arena - Lapangan 5C,Bulutangkis,Jakarta Pusat,150000,"AC, Toilet, Musholla, Parkir",0,0
+31,GCT Badminton,Bulutangkis,Jakarta Selatan,100000,"Toilet, Parkir, Mushola, Shower",0,0
+32,Grand Sport Center Kuningan,Bulutangkis,Jakarta Selatan,90000,"Parkir, Toilet, Kantin",0,0
+33,Supreme Arena Badminton,Bulutangkis,Jakarta Selatan,90000,"Parkir, Toilet, AC",0,0
+34,Zeta Sport Center (Badminton),Bulutangkis,Jakarta Timur,42000, "Parkir, Toilet",0,0
+35,GOR Badminton Sunter,Bulutangkis,Jakarta Utara,70000,"Parkir, Toilet, Kantin",0,0
+36,Versus / Yolo Badminton Court (Kamal),Bulutangkis,Jakarta Barat,85000,"Parkir, Toilet",0,0
+37,Lapangan Bulutangkis Talenta,Bulutangkis,Jakarta Utara,50000,"Parkir, Toilet",0,0
+38,GOR Daniel Sport (Jakarta Timur),Bulutangkis,Jakarta Timur,45000,"Parkir, Toilet, Musholla",0,0
+39,GOR Kurnia Badminton Court,Bulutangkis,Jakarta Timur,60000,"Parkir, Toilet",0,0
+40,GOR Vator Pacific,Bulutangkis,Bogor,52500,"Parkir, Tribun, Toilet, Kantin",0,0
+41,Hoops Arena Senayan,Basket,Jakarta Pusat,200000,"Parkir, Toilet, AC, Kantin",0,0
+42,Elite Hoop Court Kemang,Basket,Jakarta Selatan,180000,"Parkir, Musholla, Locker",0,0
+43,Victory Basketball Hall Rawamangun,Basket,Jakarta Timur,175000,"Toilet, Kantin, Tribun",0,0
+44,Metro Hoop Center Pluit,Basket,Jakarta Utara,190000,"Parkir, AC, Shower",0,0
+45,Jakarta Hoops Gandaria,Basket,Jakarta Selatan,210000,"Parkir, Toilet, Musholla, Kafe",0,0
+46,Grand Slam Court Cilandak,Basket,Jakarta Selatan,160000,"Parkir, Locker, Kantin",0,0
+47,Sunrise Basketball Hall Pulogadung,Basket,Jakarta Timur,170000,"Tribun, Parkir, Toilet",0,0
+48,North Hoop Center Kelapa Gading,Basket,Jakarta Utara,200000,"AC, Parkir, Musholla",0,0
+49,South Hoop Court Pondok Indah,Basket,Jakarta Selatan,220000,"Parkir, Toilet, Kafe, Tribun",0,0
+50,West Hoop Stadium Meruya,Basket,Jakarta Barat,150000,"Locker, Musholla, Parkir",0,0
+51,Central Hoop Court Thamrin,Basket,Jakarta Pusat,230000,"Parkir, Toilet, AC, Lounge",0,0
+52,Kompas Hoop Center Palmerah,Basket,Jakarta Barat,140000,"Parkir, Kantin, Toilet",0,0
+53,Galaxy Hoop Hall Cipete,Basket,Jakarta Selatan,160000,"Locker, Parkir, Musholla",0,0
+54,Platinum Basketball Court Kuningan,Basket,Jakarta Selatan,210000,"Parkir, AC, Kafe, Musholla",0,0
+55,Royal Hoop Stadium Sunter,Basket,Jakarta Utara,170000,"Tribun, Kantin, Parkir",0,0
+56,Champion Hoops Senopati,Basket,Jakarta Selatan,250000,"Parkir, Toilet, Lounge, Gym",0,0
+57,Prima Hoop Court Tebet,Basket,Jakarta Selatan,150000,"Musholla, Parkir, Kantin",0,0
+58,Delta Basketball Arena Kalideres,Basket,Jakarta Barat,145000,"Parkir, Toilet, Locker",0,0
+59,Cendana Hoop Hall Pasar Rebo,Basket,Jakarta Timur,130000,"Parkir, Musholla, Kantin",0,0
+60,Elite Slam Court Tanah Abang,Basket,Jakarta Pusat,240000,"AC, Parkir, Tribun, Toilet",0,0
+61,Kick-Off Arena,Futsal,Jakarta Timur,135000,"Papan Skor Digital, Kantin Modern, Loker",0,0
+62,The Goal Zone,Futsal,Jakarta Selatan,165000,"Full AC, Wi-Fi Corner, Musholla, Parkir Basement",0,0 
+63,Futsal Santuy,Futsal,Jakarta Barat,115000,"Warung Kopi, Toilet, Parkir Motor",0,0
+64,Striker's Paradise,Futsal,Jakarta Utara,140000,"Rumput Sintetis Impor, Papan Skor, Tribun Mini",0,0 
+65,Nusantara Glory Field,Futsal,Jakarta Pusat,150000,"Musholla Bersih, Kantin, Loker Gratis, Wi-Fi",0,0 
+66,Mabar Hub,Futsal,Bekasi,105000,"Parkir Gratis, Kantin 24 Jam",0,0 
+67,Elang Perkasa Court,Futsal,Tangerang,130000,"Papan Skor, Toilet Bersih, Kantin Luas",0,0 
+68,Galaxy Sport Center,Futsal,Depok,120000,"Parkir Luas, Musholla, Ruang Ganti",0,0 
+69,Pantai Indah Futsal,Futsal,Jakarta Utara,175000,"Indoor Premium, AC, Kantin, Parkir Valet",0,0 
+70,Urban Soccer Point,Futsal,Tangerang Selatan,110000,"Toilet, Warung Indomie",0,0 
+71,Titanium Futsal,Futsal,Bekasi,145000,"3 Lapangan Vinyl, Parkir Luas, Musholla",0,0 
+72,Southside Dribblers,Futsal,Jakarta Selatan,160000,"Wi-Fi Cepat, Kantin Sehat, Rumput Kualitas Pro",0,0 
+73,Phoenix Arena,Futsal,Jakarta Utara,170000,"AC Dingin, Loker Pribadi, Papan Skor Digital",0,0 
+74,Victory Pitch,Futsal,Jakarta Timur,115000,"Parkir Motor Aman, Kantin Jujur",0,0 
+75,Delta Futsal Complex,Futsal,Bekasi,125000,"Parkir, Musholla, Ruang Tunggu Nyaman",0,0 
+76,Prestige Futsal Kemang,Futsal,Jakarta Selatan,185000,"Indoor VIP, Full AC, Kafe, Parkir Valet",0,0 
+77,Keringat Bahagia Field,Futsal,Jakarta Timur,100000,"Kantin Sederhana, Parkir Terbatas",0,0 
+78,Matrix Futsal Dome,Futsal,Tangerang,135000,"Papan Skor LED, Kantin, Musholla",0,0 
+79,Metro Futsal Point,Futsal,Jakarta Selatan,145000,"Wi-Fi, Kantin, Dekat Stasiun MRT",0,0 
+80,Central Kickers,Futsal,Jakarta Pusat,130000,"Parkir Mobil & Motor, Toilet Bersih",0,0
+81,Smash House Arena,Bulutangkis,Jakarta Selatan,80000,"Toilet, Parkir, Musholla, Kantin",0,0
+82,Net King Badminton Hall,Bulutangkis,Jakarta Timur,60000,"Parkir, Toilet, Lampu LED",0,0
+83,PB Satria Mandiri,Bulutangkis,Depok,55000,"Parkir, Musholla, Ruang Ganti",0,0
+84,RacketZone Sport Center,Bulutangkis,Jakarta Barat,95000,"AC, Kantin, Toilet, Tribun",0,0
+85,ShuttlePoint Badminton,Bulutangkis,Bogor,70000,"Parkir, Toilet, Musholla",0,0
+86,Victory Smash Court,Bulutangkis,Tangerang,65000,"Toilet, Kantin, Parkir Luas",0,0
+87,Birdie Arena,Bulutangkis,Jakarta Utara,90000,"Parkir, Musholla, Locker",0,0
+88,Rama Sport Hall,Bulutangkis,Bekasi,50000,"Parkir, Toilet, Musholla",0,0
+89,GOR Mentari,Bulutangkis,Bandung,75000,"Parkir, Toilet, Musholla, Kafe",0,0
+90,NetPrime Court,Bulutangkis,Jakarta Selatan,85000,"AC, Parkir, Kantin",0,0
+91,PB Champion Center,Bulutangkis,Depok,60000,"Parkir, Toilet, Kantin, Musholla",0,0
+92,GOR Arjuna,Bulutangkis,Semarang,70000,"Parkir, Musholla, Toilet",0,0
+93,Elite Shuttle Hall,Bulutangkis,Surabaya,95000,"AC, Kantin, Parkir, Ruang Ganti",0,0
+94,GOR Sinar Sport,Bulutangkis,Yogyakarta,55000,"Parkir, Toilet, Musholla",0,0
+95,Badminton Galaxy Arena,Bulutangkis,Malang,80000,"Parkir, Toilet, Kantin",0,0
+96,Rocket Smash Hall,Bulutangkis,Medan,65000,"Toilet, Parkir, Musholla, Tribun",0,0
+97,GOR PB Cendekia,Bulutangkis,Tangerang Selatan,70000,"Parkir, Musholla, Toilet, Kantin",0,0
+98,Infinity Badminton Hall,Bulutangkis,Jakarta Barat,100000,"Full AC, Parkir, Kantin",0,0
+99,GOR Wijaya Kusuma,Bulutangkis,Depok,50000,"Toilet, Parkir, Musholla",0,0
+100,Grand Shuttle Arena,Bulutangkis,Jakarta Pusat,120000,"AC, Toilet, Lounge, Parkir",0,0

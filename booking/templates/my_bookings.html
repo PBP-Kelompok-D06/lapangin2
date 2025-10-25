@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Pesanan Saya - Lapang.in{% endblock %}
+
+{% block content %}
+<section class="min-h-screen bg-gray-50 py-10">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-6">Pesanan Saya</h1>
+
+    {% if bookings %}
+      <div class="space-y-5">
+        {% for booking in bookings %}
+          <div class="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 class="text-lg sm:text-xl font-semibold text-gray-800 mb-1">
+                  {{ booking.slot.lapangan.nama_lapangan }}
+                </h2>
+                <p class="text-sm text-gray-600">
+                  <span class="font-medium">Lokasi:</span> {{ booking.slot.lapangan.lokasi }}
+                </p>
+                <p class="text-sm text-gray-600">
+                  <span class="font-medium">Tanggal:</span> {{ booking.slot.tanggal|date:"d M Y" }}
+                </p>
+                <p class="text-sm text-gray-600">
+                  <span class="font-medium">Waktu:</span> {{ booking.slot.jam_mulai }} - {{ booking.slot.jam_akhir }}
+                </p>
+                <p class="text-sm text-gray-600">
+                  <span class="font-medium">Status:</span>
+                  {% if booking.status_pembayaran == 'PAID' %}
+                    <span class="text-green-700 font-semibold">Sudah Dibayar</span>
+                  {% elif booking.status_pembayaran == 'PENDING' %}
+                    <span class="text-yellow-700 font-semibold">Menunggu Pembayaran</span>
+                  {% elif booking.status_pembayaran == 'CANCELLED' %}
+                    <span class="text-red-700 font-semibold">Dibatalkan</span>
+                  {% endif %}
+                </p>
+              </div>
+
+              <div class="mt-4 md:mt-0">
+                <p class="text-right text-lg font-bold text-[#a7bf6e] mb-4">
+                  Rp {{ booking.total_bayar|floatformat:0 }}
+                </p>
+                <a href="{% url 'booking:show_payment_page' booking.id %}" 
+                   class="px-4 py-2 bg-[#a7bf6e] text-white rounded-lg hover:bg-[#8ca65b] transition">
+                  Lihat Detail
+                </a>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-center text-gray-500 mt-10">
+        <p>Belum ada pesanan yang dikonfirmasi atau dibayar.</p>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+
+
+ini booking/templates/my_bookings.html
