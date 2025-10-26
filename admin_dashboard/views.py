@@ -302,6 +302,25 @@ def lapangan_edit(request, pk):
                     })
                 
                 lapangan.foto_2 = foto_2
+            if foto_3:
+                if foto.size > 5 * 1024 * 1024:
+                    messages.error(request, 'Ukuran foto maksimal 5MB!')
+                    return render(request, 'admin_dashboard/lapangan_form.html', {
+                        'lapangan': lapangan,
+                        'jenis_choices': [('Futsal', 'Futsal'), ('Bulutangkis', 'Bulutangkis'), ('Basket', 'Basket')],
+                        'pending_bookings': get_pending_bookings_count(request.user),
+                    })
+                
+                allowed_types = ['image/jpeg', 'image/jpg', 'image/png']
+                if foto.content_type not in allowed_types:
+                    messages.error(request, 'Format foto harus JPG atau PNG!')
+                    return render(request, 'admin_dashboard/lapangan_form.html', {
+                        'lapangan': lapangan,
+                        'jenis_choices': [('Futsal', 'Futsal'), ('Bulutangkis', 'Bulutangkis'), ('Basket', 'Basket')],
+                        'pending_bookings': get_pending_bookings_count(request.user),
+                    })
+                
+                lapangan.foto_3 = foto_3
 
             lapangan.save()
             
