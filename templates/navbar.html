@@ -10,13 +10,32 @@
             </div>
 
             <div class="hidden md:flex space-x-8">
-                <a href="{% url 'main:home' %}" class="text-[#4F4F4F] hover:text-primary font-medium transition duration-150">Home</a> 
-                <a href="{% url 'community:show_community_page' %}" class="text-[#4F4F4F] hover:text-primary font-medium transition duration-150">Community</a> 
-                <a href="{% url 'booking:my_bookings' %}" class="text-[#4F4F4F] hover:text-primary font-medium transition duration-150">My Bookings</a> 
+                <a href="{% url 'main:home' %}" 
+                   class="text-[#4F4F4F] hover:text-primary font-medium transition duration-300 relative group
+                          {% if request.resolver_match.url_name == 'home' %}text-primary{% endif %}">
+                    Home
+                    <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full
+                                 {% if request.resolver_match.url_name == 'home' %}w-full{% endif %}"></span>
+                </a>
+                
+                <a href="{% url 'community:show_community_page' %}" 
+                   class="text-[#4F4F4F] hover:text-primary font-medium transition duration-300 relative group
+                          {% if request.resolver_match.namespace == 'community' %}text-primary{% endif %}">
+                    Community
+                    <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full
+                                 {% if request.resolver_match.namespace == 'community' %}w-full{% endif %}"></span>
+                </a>
+                
+                <a href="{% url 'booking:my_bookings' %}" 
+                   class="text-[#4F4F4F] hover:text-primary font-medium transition duration-300 relative group
+                          {% if request.resolver_match.url_name == 'my_bookings' %}text-primary{% endif %}">
+                    My Bookings
+                    <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full
+                                 {% if request.resolver_match.url_name == 'my_bookings' %}w-full{% endif %}"></span>
+                </a>
             </div>
             
             <div class="flex items-center space-x-4">
-                
                 {% if user.is_authenticated %}
                     <div class="flex items-center space-x-2">
                         <span class="text-md font-medium text-gray-700 hidden sm:block">{{ user.username }}</span>

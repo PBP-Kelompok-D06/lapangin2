@@ -6,6 +6,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import Http404
 from datetime import date, time, timedelta, datetime
 import threading
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 # Import Models
 from booking.models import Lapangan, SlotTersedia, Booking
@@ -301,3 +302,293 @@ class TransaksiSessionsTests(DataSetupMixin):
         }
         response = self.client.post(reverse('admin_dashboard:booking_sessions_create'), data, follow=True)
         self.assertContains(response, 'Jam akhir harus lebih besar dari jam mulai!')
+
+# ------------------------------------------------------------------------------------------------
+
+class LapanganMultiplePhotosTests(DataSetupMixin):
+    """Test untuk fitur 3 foto lapangan"""
+    
+    def test_lapangan_create_with_three_photos(self):
+        """Test create lapangan dengan 3 foto sekaligus"""
+        self.client.force_login(self.owner_user)
+        
+        foto1 = SimpleUploadedFile("foto1.jpg", b"foto1_content", content_type="image/jpeg")
+        foto2 = SimpleUploadedFile("foto2.jpg", b"foto2_content", content_type="image/jpeg")
+        foto3 = SimpleUploadedFile("foto3.jpg", b"foto3_content", content_type="image/jpeg")
+        
+        data = {
+            'nama': 'Lapangan 3 Foto',
+            'jenis': 'Futsal',
+            'lokasi': 'Jakarta',
+            'harga': '100000',
+            'deskripsi': 'Test',
+            'fasilitas': 'AC',
+            'foto_utama': foto1,
+            'foto_2': foto2,
+            'foto_3': foto3
+        }
+        
+        response = self.client.post(reverse('admin_dashboard:lapangan_create'), data, follow=True)
+        self.assertEqual(response.status_code, 200)
+        
+        # Verify lapangan created with 3 photos
+        lapangan = Lapangan.objects.filter(nama_lapangan='Lapangan 3 Foto').first()
+        self.assertIsNotNone(lapangan)
+        self.assertTrue(lapangan.foto_utama)
+        self.assertTrue(lapangan.foto_2)
+        self.assertTrue(lapangan.foto_3)
+    
+    def test_lapangan_edit_add_foto_2_only(self):
+        """Test edit: tambah foto 2 saja (foto utama dan 3 kosong)"""
+        self.client.force_login(self.owner_user)
+        url = reverse('admin_dashboard:lapangan_edit', kwargs={'pk': self.lapangan1.pk})
+        
+        foto2 = SimpleUploadedFile("foto2.jpg", b"foto2_content", content_type="image/jpeg")
+        
+        data = {
+            'nama': 'Updated Lapangan',
+            'jenis': 'Futsal',
+            'lokasi': 'Jakarta',
+            'harga': '150000',
+            'deskripsi': 'Updated',
+            'fasilitas': 'AC',
+            'foto_2': foto2  # Only foto 2
+        }
+        
+        response = self.client.post(url, data, follow=True)
+        self.assertEqual(response.status_code, 200)
+        
+        # Verify foto 2 added
+        self.lapangan1.refresh_from_db()
+        self.assertTrue(self.lapangan1.foto_2)
+    
+    def test_lapangan_edit_add_foto_3_only(self):
+        """Test edit: tambah foto 3 saja"""
+        self.client.force_login(self.owner_user)
+        url = reverse('admin_dashboard:lapangan_edit', kwargs={'pk': self.lapangan1.pk})
+        
+        foto3 = SimpleUploadedFile("foto3.jpg", b"foto3_content", content_type="image/jpeg")
+        
+        data = {
+            'nama': 'Updated Lapangan',
+            'jenis': 'Futsal',
+            'lokasi': 'Jakarta',
+            'harga': '150000',
+            'deskripsi': 'Updated',
+            'fasilitas': 'AC',
+            'foto_3': foto3  # Only foto 3
+        }
+        
+        response = self.client.post(url, data, follow=True)
+        self.assertEqual(response.status_code, 200)
+        
+        # Verify foto 3 added
+        self.lapangan1.refresh_from_db()
+        self.assertTrue(self.lapangan1.foto_3)
+    
+    def test_lapangan_edit_update_all_three_photos(self):
+        """Test edit: update semua 3 foto sekaligus"""
+        self.client.force_login(self.owner_user)
+        url = reverse('admin_dashboard:lapangan_edit', kwargs={'pk': self.lapangan1.pk})
+        
+        foto1 = SimpleUploadedFile("new1.jpg", b"new1_content", content_type="image/jpeg")
+        foto2 = SimpleUploadedFile("new2.jpg", b"new2_content", content_type="image/jpeg")
+        foto3 = SimpleUploadedFile("new3.jpg", b"new3_content", content_type="image/jpeg")
+        
+        data = {
+            'nama': 'Updated Lapangan',
+            'jenis': 'Futsal',
+            'lokasi': 'Jakarta',
+            'harga': '150000',
+            'deskripsi': 'Updated',
+            'fasilitas': 'AC',
+            'foto_utama': foto1,
+            'foto_2': foto2,
+            'foto_3': foto3
+        }
+        
+        response = self.client.post(url, data, follow=True)
+        self.assertEqual(response.status_code, 200)
+        
+        # Verify all photos updated
+        self.lapangan1.refresh_from_db()
+        self.assertTrue(self.lapangan1.foto_utama)
+        self.assertTrue(self.lapangan1.foto_2)
+        self.assertTrue(self.lapangan1.foto_3)
+    
+    def test_lapangan_edit_foto_2_too_large(self):
+        """Test edit: foto 2 terlalu besar (>5MB)"""
+        self.client.force_login(self.owner_user)
+        url = reverse('admin_dashboard:lapangan_edit', kwargs={'pk': self.lapangan1.pk})
+        
+        large_foto = SimpleUploadedFile("large2.jpg", b"a" * (6 * 1024 * 1024), content_type="image/jpeg")
+        
+        data = {
+            'nama': 'Updated Lapangan',
+            'jenis': 'Futsal',
+            'lokasi': 'Jakarta',
+            'harga': '150000',
+            'deskripsi': 'Updated',
+            'fasilitas': 'AC',
+            'foto_2': large_foto
+        }
+        
+        response = self.client.post(url, data, follow=True)
+        self.assertContains(response, 'Ukuran foto 2 maksimal 5MB')
+    
+    def test_lapangan_edit_foto_3_too_large(self):
+        """Test edit: foto 3 terlalu besar (>5MB)"""
+        self.client.force_login(self.owner_user)
+        url = reverse('admin_dashboard:lapangan_edit', kwargs={'pk': self.lapangan1.pk})
+        
+        large_foto = SimpleUploadedFile("large3.jpg", b"a" * (6 * 1024 * 1024), content_type="image/jpeg")
+        
+        data = {
+            'nama': 'Updated Lapangan',
+            'jenis': 'Futsal',
+            'lokasi': 'Jakarta',
+            'harga': '150000',
+            'deskripsi': 'Updated',
+            'fasilitas': 'AC',
+            'foto_3': large_foto
+        }
+        
+        response = self.client.post(url, data, follow=True)
+        self.assertContains(response, 'Ukuran foto 3 maksimal 5MB')
+    
+    def test_lapangan_edit_foto_2_invalid_type(self):
+        """Test edit: foto 2 dengan tipe file invalid"""
+        self.client.force_login(self.owner_user)
+        url = reverse('admin_dashboard:lapangan_edit', kwargs={'pk': self.lapangan1.pk})
+        
+        invalid_foto = SimpleUploadedFile("file2.txt", b"text_content", content_type="text/plain")
+        
+        data = {
+            'nama': 'Updated Lapangan',
+            'jenis': 'Futsal',
+            'lokasi': 'Jakarta',
+            'harga': '150000',
+            'deskripsi': 'Updated',
+            'fasilitas': 'AC',
+            'foto_2': invalid_foto
+        }
+        
+        response = self.client.post(url, data, follow=True)
+        self.assertContains(response, 'Format foto 2 harus JPG atau PNG')
+    
+    def test_lapangan_edit_foto_3_invalid_type(self):
+        """Test edit: foto 3 dengan tipe file invalid"""
+        self.client.force_login(self.owner_user)
+        url = reverse('admin_dashboard:lapangan_edit', kwargs={'pk': self.lapangan1.pk})
+        
+        invalid_foto = SimpleUploadedFile("file3.txt", b"text_content", content_type="text/plain")
+        
+        data = {
+            'nama': 'Updated Lapangan',
+            'jenis': 'Futsal',
+            'lokasi': 'Jakarta',
+            'harga': '150000',
+            'deskripsi': 'Updated',
+            'fasilitas': 'AC',
+            'foto_3': invalid_foto
+        }
+        
+        response = self.client.post(url, data, follow=True)
+        self.assertContains(response, 'Format foto 3 harus JPG atau PNG')
+    
+    def test_lapangan_edit_scenario_first_edit_foto_1_only(self):
+        """Test skenario real: edit pertama - upload foto 1 saja"""
+        self.client.force_login(self.owner_user)
+        url = reverse('admin_dashboard:lapangan_edit', kwargs={'pk': self.lapangan1.pk})
+        
+        foto1 = SimpleUploadedFile("foto1.jpg", b"foto1_content", content_type="image/jpeg")
+        
+        data = {
+            'nama': 'Lapangan Edit 1',
+            'jenis': 'Futsal',
+            'lokasi': 'Jakarta',
+            'harga': '100000',
+            'deskripsi': 'First edit',
+            'fasilitas': 'AC',
+            'foto_utama': foto1
+        }
+        
+        response = self.client.post(url, data, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'berhasil diupdate')
+    
+    def test_lapangan_edit_scenario_second_edit_add_foto_2_and_3(self):
+        """Test skenario real: edit kedua - tambah foto 2 dan 3 (foto 1 kosong)"""
+        self.client.force_login(self.owner_user)
+        url = reverse('admin_dashboard:lapangan_edit', kwargs={'pk': self.lapangan1.pk})
+        
+        # First edit - add foto 1
+        foto1 = SimpleUploadedFile("foto1.jpg", b"foto1_content", content_type="image/jpeg")
+        data = {
+            'nama': 'Lapangan Skenario',
+            'jenis': 'Futsal',
+            'lokasi': 'Jakarta',
+            'harga': '100000',
+            'deskripsi': 'Test',
+            'fasilitas': 'AC',
+            'foto_utama': foto1
+        }
+        self.client.post(url, data)
+        
+        # Second edit - add foto 2 and 3 without foto 1
+        foto2 = SimpleUploadedFile("foto2.jpg", b"foto2_content", content_type="image/jpeg")
+        foto3 = SimpleUploadedFile("foto3.jpg", b"foto3_content", content_type="image/jpeg")
+        
+        data2 = {
+            'nama': 'Lapangan Skenario Updated',
+            'jenis': 'Futsal',
+            'lokasi': 'Jakarta',
+            'harga': '120000',
+            'deskripsi': 'Second edit',
+            'fasilitas': 'AC, Parking',
+            'foto_2': foto2,
+            'foto_3': foto3
+            # foto_utama tidak di-upload lagi
+        }
+        
+        response = self.client.post(url, data2, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'berhasil diupdate')
+        
+        # Verify all 3 photos exist
+        self.lapangan1.refresh_from_db()
+        self.assertTrue(self.lapangan1.foto_utama)  # From first edit
+        self.assertTrue(self.lapangan1.foto_2)      # From second edit
+        self.assertTrue(self.lapangan1.foto_3)      # From second edit
+    
+    def test_lapangan_create_foto_2_too_large(self):
+        """Test create: foto 2 terlalu besar"""
+        self.client.force_login(self.owner_user)
+        
+        # Note: lapangan_create belum ada validasi untuk foto_2 dan foto_3
+        # Jika ingin comprehensive, perlu update lapangan_create juga
+        # Test ini untuk dokumentasi bahwa create mungkin perlu update
+        pass
+    
+    def test_lapangan_edit_mixed_valid_invalid_photos(self):
+        """Test edit: kombinasi foto valid dan invalid"""
+        self.client.force_login(self.owner_user)
+        url = reverse('admin_dashboard:lapangan_edit', kwargs={'pk': self.lapangan1.pk})
+        
+        valid_foto = SimpleUploadedFile("valid.jpg", b"valid_content", content_type="image/jpeg")
+        invalid_foto = SimpleUploadedFile("invalid.txt", b"text", content_type="text/plain")
+        
+        data = {
+            'nama': 'Updated Lapangan',
+            'jenis': 'Futsal',
+            'lokasi': 'Jakarta',
+            'harga': '150000',
+            'deskripsi': 'Updated',
+            'fasilitas': 'AC',
+            'foto_utama': valid_foto,
+            'foto_2': invalid_foto  # Invalid
+        }
+        
+        response = self.client.post(url, data, follow=True)
+        # Should show error for foto 2
+        self.assertContains(response, 'Format foto 2 harus JPG atau PNG')

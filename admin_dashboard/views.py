@@ -215,7 +215,6 @@ def lapangan_edit(request, pk):
     
     if request.method == 'POST':
         try:
-            
             nama = request.POST.get('nama', '').strip()
             jenis = request.POST.get('jenis', '').strip()
             lokasi = request.POST.get('lokasi', '').strip()
@@ -250,7 +249,7 @@ def lapangan_edit(request, pk):
                     'pending_bookings': get_pending_bookings_count(request.user),
                 })
             
-            # Update lapangan
+            # Update data dasar lapangan
             lapangan.nama_lapangan = nama
             lapangan.jenis_olahraga = jenis
             lapangan.lokasi = lokasi
@@ -258,23 +257,27 @@ def lapangan_edit(request, pk):
             lapangan.deskripsi = request.POST.get('deskripsi', '').strip()
             lapangan.fasilitas = request.POST.get('fasilitas', '').strip()
             
-            
+            # Ambil file foto
             foto = request.FILES.get('foto_utama')
             foto_2 = request.FILES.get('foto_2')
             foto_3 = request.FILES.get('foto_3')
-
+            
+            # Allowed types untuk semua foto
+            allowed_types = ['image/jpeg', 'image/jpg', 'image/png']
+            max_size = 5 * 1024 * 1024  # 5MB
+            
+            # Validasi dan update FOTO UTAMA
             if foto:
-                if foto.size > 5 * 1024 * 1024:
-                    messages.error(request, 'Ukuran foto maksimal 5MB!')
+                if foto.size > max_size:
+                    messages.error(request, 'Ukuran foto utama maksimal 5MB!')
                     return render(request, 'admin_dashboard/lapangan_form.html', {
                         'lapangan': lapangan,
                         'jenis_choices': [('Futsal', 'Futsal'), ('Bulutangkis', 'Bulutangkis'), ('Basket', 'Basket')],
                         'pending_bookings': get_pending_bookings_count(request.user),
                     })
                 
-                allowed_types = ['image/jpeg', 'image/jpg', 'image/png']
                 if foto.content_type not in allowed_types:
-                    messages.error(request, 'Format foto harus JPG atau PNG!')
+                    messages.error(request, 'Format foto utama harus JPG atau PNG!')
                     return render(request, 'admin_dashboard/lapangan_form.html', {
                         'lapangan': lapangan,
                         'jenis_choices': [('Futsal', 'Futsal'), ('Bulutangkis', 'Bulutangkis'), ('Basket', 'Basket')],
@@ -283,18 +286,18 @@ def lapangan_edit(request, pk):
                 
                 lapangan.foto_utama = foto
             
+            # Validasi dan update FOTO 2
             if foto_2:
-                if foto.size > 5 * 1024 * 1024:
-                    messages.error(request, 'Ukuran foto maksimal 5MB!')
+                if foto_2.size > max_size:  # FIX: Gunakan foto_2.size bukan foto.size
+                    messages.error(request, 'Ukuran foto 2 maksimal 5MB!')
                     return render(request, 'admin_dashboard/lapangan_form.html', {
                         'lapangan': lapangan,
                         'jenis_choices': [('Futsal', 'Futsal'), ('Bulutangkis', 'Bulutangkis'), ('Basket', 'Basket')],
                         'pending_bookings': get_pending_bookings_count(request.user),
                     })
                 
-                allowed_types = ['image/jpeg', 'image/jpg', 'image/png']
-                if foto.content_type not in allowed_types:
-                    messages.error(request, 'Format foto harus JPG atau PNG!')
+                if foto_2.content_type not in allowed_types:  # FIX: Gunakan foto_2.content_type
+                    messages.error(request, 'Format foto 2 harus JPG atau PNG!')
                     return render(request, 'admin_dashboard/lapangan_form.html', {
                         'lapangan': lapangan,
                         'jenis_choices': [('Futsal', 'Futsal'), ('Bulutangkis', 'Bulutangkis'), ('Basket', 'Basket')],
@@ -302,18 +305,19 @@ def lapangan_edit(request, pk):
                     })
                 
                 lapangan.foto_2 = foto_2
+            
+            # Validasi dan update FOTO 3
             if foto_3:
-                if foto.size > 5 * 1024 * 1024:
-                    messages.error(request, 'Ukuran foto maksimal 5MB!')
+                if foto_3.size > max_size:  # FIX: Gunakan foto_3.size bukan foto.size
+                    messages.error(request, 'Ukuran foto 3 maksimal 5MB!')
                     return render(request, 'admin_dashboard/lapangan_form.html', {
                         'lapangan': lapangan,
                         'jenis_choices': [('Futsal', 'Futsal'), ('Bulutangkis', 'Bulutangkis'), ('Basket', 'Basket')],
                         'pending_bookings': get_pending_bookings_count(request.user),
                     })
                 
-                allowed_types = ['image/jpeg', 'image/jpg', 'image/png']
-                if foto.content_type not in allowed_types:
-                    messages.error(request, 'Format foto harus JPG atau PNG!')
+                if foto_3.content_type not in allowed_types:  # FIX: Gunakan foto_3.content_type
+                    messages.error(request, 'Format foto 3 harus JPG atau PNG!')
                     return render(request, 'admin_dashboard/lapangan_form.html', {
                         'lapangan': lapangan,
                         'jenis_choices': [('Futsal', 'Futsal'), ('Bulutangkis', 'Bulutangkis'), ('Basket', 'Basket')],
@@ -321,7 +325,8 @@ def lapangan_edit(request, pk):
                     })
                 
                 lapangan.foto_3 = foto_3
-
+            
+            # Save lapangan setelah semua validasi berhasil
             lapangan.save()
             
             messages.success(request, 'Lapangan berhasil diupdate!')
