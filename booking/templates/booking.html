@@ -9,7 +9,7 @@
 
 <div class="relative w-full h-80 overflow-hidden rounded-lg shadow-xl mb-8">
 
-<img src="{% if lapangan_terpilih.foto_utama %}{{ lapangan_terpilih.foto_utama.url }}{% else %}{% static 'images/lapangan_default.jpg' %}{% endif %}"
+<img src="{% if lapangan_terpilih.foto_utama %}{{ lapangan_terpilih.foto_utama.url }}{% else %}{% static '' %}{{ hero_image_url }}{% endif %}"
      alt="Visual Lapangan {{ lapangan_terpilih.nama_lapangan }}"
      class="w-full h-full object-cover transition duration-300 hover:scale-105">
 <div class="absolute inset-0 bg-black bg-opacity-30 flex items-end p-6">

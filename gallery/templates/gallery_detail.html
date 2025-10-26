@@ -9,10 +9,10 @@
 
     <div class="mb-8">
       <div class="relative">
+        
         <div class="rounded-xl overflow-hidden shadow-md">
-          
           <img id="hero-image"
-               src="{% if lapangan.foto_utama %}{{ lapangan.foto_utama.url }}{% else %}{% static 'images/lapangan_default.jpg' %}{% endif %}"
+               src="{% if lapangan.foto_utama %}{{ lapangan.foto_utama.url }}{% else %}{% static hero_images.0 %}{% endif %}"
                alt="{{ lapangan.nama_lapangan }}"
                class="w-full h-[60vh] md:h-[50vh] lg:h-[60vh] object-cover transition-opacity duration-300">
           </div>
@@ -22,25 +22,35 @@
             <div id="thumbnail-container"
                 class="flex gap-3 sm:gap-4 items-center justify-center bg-transparent px-2 sm:px-4 flex-wrap sm:flex-nowrap">
 
-                {% if lapangan.foto_utama %}
-                <img src="{{ lapangan.foto_utama.url }}"
-                    data-src="{{ lapangan.foto_utama.url }}"
-                    alt="{{ lapangan.nama_lapangan }} thumbnail 1"
-                    class="thumbnail rounded-xl h-20 w-28 sm:h-28 sm:w-36 object-cover cursor-pointer shadow-lg border-4 border-white flex-shrink-0 transition-transform duration-150">
-                {% endif %}
+                {% if lapangan.foto_utama or lapangan.foto_2 or lapangan.foto_3 %}
+                    {% if lapangan.foto_utama %}
+                    <img src="{{ lapangan.foto_utama.url }}"
+                        data-src="{{ lapangan.foto_utama.url }}"
+                        alt="{{ lapangan.nama_lapangan }} thumbnail 1"
+                        class="thumbnail rounded-xl h-20 w-28 sm:h-28 sm:w-36 object-cover cursor-pointer shadow-lg border-4 border-white flex-shrink-0 transition-transform duration-150">
+                    {% endif %}
 
-                {% if lapangan.foto_2 %}
-                <img src="{{ lapangan.foto_2.url }}"
-                    data-src="{{ lapangan.foto_2.url }}"
-                    alt="{{ lapangan.nama_lapangan }} thumbnail 2"
-                    class="thumbnail rounded-xl h-20 w-28 sm:h-28 sm:w-36 object-cover cursor-pointer shadow-lg border-4 border-white flex-shrink-0 transition-transform duration-150">
-                {% endif %}
+                    {% if lapangan.foto_2 %}
+                    <img src="{{ lapangan.foto_2.url }}"
+                        data-src="{{ lapangan.foto_2.url }}"
+                        alt="{{ lapangan.nama_lapangan }} thumbnail 2"
+                        class="thumbnail rounded-xl h-20 w-28 sm:h-28 sm:w-36 object-cover cursor-pointer shadow-lg border-4 border-white flex-shrink-0 transition-transform duration-150">
+                    {% endif %}
+                    
+                    {% if lapangan.foto_3 %}
+                    <img src="{{ lapangan.foto_3.url }}"
+                        data-src="{{ lapangan.foto_3.url }}"
+                        alt="{{ lapangan.nama_lapangan }} thumbnail 3"
+                        class="thumbnail rounded-xl h-20 w-28 sm:h-28 sm:w-36 object-cover cursor-pointer shadow-lg border-4 border-white flex-shrink-0 transition-transform duration-150">
+                    {% endif %}
                 
-                {% if lapangan.foto_3 %}
-                <img src="{{ lapangan.foto_3.url }}"
-                    data-src="{{ lapangan.foto_3.url }}"
-                    alt="{{ lapangan.nama_lapangan }} thumbnail 3"
-                    class="thumbnail rounded-xl h-20 w-28 sm:h-28 sm:w-36 object-cover cursor-pointer shadow-lg border-4 border-white flex-shrink-0 transition-transform duration-150">
+                {% else %}
+                    {% for img in gallery_images %}
+                    <img src="{% static img %}"
+                        data-src="{% static img %}"
+                        alt="{{ lapangan.nama_lapangan }} thumbnail {{ forloop.counter }}"
+                        class="thumbnail rounded-xl h-20 w-28 sm:h-28 sm:w-36 object-cover cursor-pointer shadow-lg border-4 border-white flex-shrink-0 transition-transform duration-150">
+                    {% endfor %}
                 {% endif %}
                 </div>
           </div>
@@ -117,8 +127,6 @@
           <button id="lihat-semua-btn" class="block w-full lg:w-auto text-center lg:text-right px-4 py-2 bg-primary text-white rounded-lg hover:bg-[#4D5833] transition">            Lihat Semua Ulasan
           </button>
         </div>
-
-
 
       </div>
     </div>
