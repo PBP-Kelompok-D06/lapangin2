@@ -7,45 +7,52 @@
 <section id="gallery-view" class="min-h-screen pb-16 bg-gray-50">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-    <!-- Hero + Thumbnails -->
     <div class="mb-8">
       <div class="relative">
-        <!-- Hero Image -->
         <div class="rounded-xl overflow-hidden shadow-md">
+          
           <img id="hero-image"
-               src="{% static hero_images.0 %}"
+               src="{% if lapangan.foto_utama %}{{ lapangan.foto_utama.url }}{% else %}{% static 'images/lapangan_default.jpg' %}{% endif %}"
                alt="{{ lapangan.nama_lapangan }}"
                class="w-full h-[60vh] md:h-[50vh] lg:h-[60vh] object-cover transition-opacity duration-300">
-        </div>
+          </div>
 
-    <!-- Thumbnails (overlap style) -->
-    <div class="absolute left-0 right-0 -bottom-14 flex justify-center pointer-events-none">
-      <div id="thumbnail-wrapper" class="pointer-events-auto">
-        <div id="thumbnail-container"
-            class="flex gap-3 sm:gap-4 items-center justify-center bg-transparent px-2 sm:px-4 flex-wrap sm:flex-nowrap">
+        <div class="absolute left-0 right-0 -bottom-14 flex justify-center pointer-events-none">
+          <div id="thumbnail-wrapper" class="pointer-events-auto">
+            <div id="thumbnail-container"
+                class="flex gap-3 sm:gap-4 items-center justify-center bg-transparent px-2 sm:px-4 flex-wrap sm:flex-nowrap">
 
-            {% for img in gallery_images %}
-              <img src="{% static img %}"
-                  data-src="{% static img %}"
-                  alt="{{ lapangan.nama_lapangan }} thumbnail {{ forloop.counter }}"
-                  class="thumbnail rounded-xl h-20 w-28 sm:h-28 sm:w-36 object-cover cursor-pointer shadow-lg border-4 border-white flex-shrink-0 transition-transform duration-150">
-            {% endfor %}
+                {% if lapangan.foto_utama %}
+                <img src="{{ lapangan.foto_utama.url }}"
+                    data-src="{{ lapangan.foto_utama.url }}"
+                    alt="{{ lapangan.nama_lapangan }} thumbnail 1"
+                    class="thumbnail rounded-xl h-20 w-28 sm:h-28 sm:w-36 object-cover cursor-pointer shadow-lg border-4 border-white flex-shrink-0 transition-transform duration-150">
+                {% endif %}
 
-
-            </div>
+                {% if lapangan.foto_2 %}
+                <img src="{{ lapangan.foto_2.url }}"
+                    data-src="{{ lapangan.foto_2.url }}"
+                    alt="{{ lapangan.nama_lapangan }} thumbnail 2"
+                    class="thumbnail rounded-xl h-20 w-28 sm:h-28 sm:w-36 object-cover cursor-pointer shadow-lg border-4 border-white flex-shrink-0 transition-transform duration-150">
+                {% endif %}
+                
+                {% if lapangan.foto_3 %}
+                <img src="{{ lapangan.foto_3.url }}"
+                    data-src="{{ lapangan.foto_3.url }}"
+                    alt="{{ lapangan.nama_lapangan }} thumbnail 3"
+                    class="thumbnail rounded-xl h-20 w-28 sm:h-28 sm:w-36 object-cover cursor-pointer shadow-lg border-4 border-white flex-shrink-0 transition-transform duration-150">
+                {% endif %}
+                </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Main content card -->
     <div class="bg-white rounded-2xl shadow-sm p-6 sm:p-8 mt-20">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left: title, rating, fasilitas, deskripsi -->
         <div class="lg:col-span-2">
           <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3">{{ lapangan.nama_lapangan }}</h1>
 
-          <!-- Rating -->
           <div class="flex items-center gap-3 mb-4">
             <div class="flex items-center text-yellow-400 text-lg">
               {% for i in "12345" %}
@@ -59,7 +66,6 @@
             <div class="text-sm text-gray-600">({{ lapangan.jumlah_ulasan }} ulasan)</div>
           </div>
 
-          <!-- Fasilitas -->
           <div class="mb-6">
             <h3 class="text-md font-semibold text-gray-800 mb-2">Fasilitas</h3>
             <div class="flex flex-wrap gap-2">
@@ -71,7 +77,6 @@
             </div>
           </div>
 
-          <!-- Deskripsi -->
           <div class="mb-6">
             <h3 class="text-md font-semibold text-gray-800 mb-2">Deskripsi</h3>
             <p class="text-gray-600 text-sm leading-relaxed text-justify">
@@ -86,24 +91,21 @@
           </div>
         </div>
 
-        <!-- Right: price + booking -->
         <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between w-full">
-          <!-- Harga -->
-            <p class="text-2xl font-bold text-primary mt-4">
+          <p class="text-2xl font-bold text-primary mt-4">
                 <span class="text-sm text-gray-600">Harga/Jam:</span> Rp {{ lapangan.harga_per_jam|floatformat:0 }}
             </p>
           </div>
 
-          <!-- Tombol Booking -->
-        </div>
+          </div>
         <div class="flex justify-center lg:justify-start w-full">
-  <a href="{% url 'booking:show_booking_page' %}?lapangan_id={{ lapangan.id }}"
-     class="mt-8 mb-8 w-full lg:w-[250px] bg-[#a7bf6e] hover:bg-[#4f4f4f] 
-            text-white font-semibold py-3 px-8 rounded-md shadow-md 
-            transition duration-300 text-center">
-    Booking Sekarang
-  </a>
-</div>
+          <a href="{% url 'booking:show_booking_page' %}?lapangan_id={{ lapangan.id }}"
+             class="mt-8 mb-8 w-full lg:w-[250px] bg-[#a7bf6e] hover:bg-[#4f4f4f] 
+                    text-white font-semibold py-3 px-8 rounded-md shadow-md 
+                    transition duration-300 text-center">
+            Booking Sekarang
+          </a>
+        </div>
 
         <div id="reviews-section" class="lg:col-span-3 mt-10">
             <h3 class="ulasan text-md font-semibold text-gray-800 mb-2 mt-20 padding-0">Ulasan untuk {{lapangan.nama_lapangan}} </h3>

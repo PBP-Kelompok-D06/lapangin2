@@ -24,8 +24,9 @@ class Lapangan(models.Model):
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.00) 
     jumlah_ulasan = models.IntegerField(default=0)
     
-    # TAMBAHKAN KEMBALI FIELD INI
     foto_utama = models.ImageField(upload_to='lapangan/', null=True, blank=True)
+    foto_2 = models.ImageField(upload_to='lapangan/', null=True, blank=True)
+    foto_3 = models.ImageField(upload_to='lapangan/', null=True, blank=True)
     deskripsi = models.TextField(blank=True, default='')
     is_active = models.BooleanField(default=True)
 

@@ -42,32 +42,79 @@
         </div>
 
         <div class="mb-6">
-            <label class="block text-gray-700 font-bold mb-2">FOTO LAPANGAN</label>
-            <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center" id="uploadBox">
+            <label class="block text-gray-700 font-bold mb-2">FOTO LAPANGAN 1 (UTAMA)</label>
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center" id="uploadBox1">
                 
                 {% if lapangan and lapangan.foto_utama %}
-                    <img src="{{ lapangan.foto_utama.url }}" alt="Preview" id="imagePreview" class="mx-auto mb-4 max-h-48 rounded-lg">
-                    
-                    <label for="fotoInput" class="cursor-pointer bg-primary text-white px-6 py-2 rounded-lg inline-block hover:bg-[#5A6B4A] transition">
-                        Ganti Foto
+                    <img src="{{ lapangan.foto_utama.url }}" alt="Preview" id="imagePreview1" class="mx-auto mb-4 max-h-48 rounded-lg">
+                    <label for="fotoInput1" class="cursor-pointer bg-primary text-white px-6 py-2 rounded-lg inline-block hover:bg-[#5A6B4A] transition">
+                        Ganti Foto 1
                     </label>
                     <p class="text-gray-500 text-sm mt-2">Format: JPG, PNG (Max 5MB)</p>
-                
                 {% else %}
-                    <div id="placeholderGroup">
-                        <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                        </svg>
-                        <label for="fotoInput" class="cursor-pointer bg-primary text-white px-6 py-2 rounded-lg inline-block hover:bg-[#5A6B4A] transition">
-                            Upload Foto
+                    <div id="placeholderGroup1">
+                        <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                        <label for="fotoInput1" class="cursor-pointer bg-primary text-white px-6 py-2 rounded-lg inline-block hover:bg-[#5A6B4A] transition">
+                            Upload Foto 1
                         </label>
                     </div>
-                    <p id="placeholderHelp" class="text-gray-500 text-sm mt-2">Format: JPG, PNG (Max 5MB)</p>
+                    <img src="" alt="Preview" id="imagePreview1" class="mx-auto mb-4 max-h-48 rounded-lg" style="display: none;">
+                    <p id="placeholderHelp1" class="text-gray-500 text-sm mt-2">Format: JPG, PNG (Max 5MB)</p>
+                    <div id="changeButtonContainer1" class="mt-4"></div>
                 {% endif %}
 
-                <input type="file" name="foto_utama" id="fotoInput" accept="image/*" class="hidden">
+                <input type="file" name="foto_utama" id="fotoInput1" accept="image/*" class="hidden">
+                
+                </div>
+        </div>
+        <div class="mb-6">
+            <label class="block text-gray-700 font-bold mb-2">FOTO LAPANGAN 2</label>
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center" id="uploadBox2">
+                
+                {% if lapangan and lapangan.foto_2 %}
+                    <img src="{{ lapangan.foto_2.url }}" alt="Preview" id="imagePreview2" class="mx-auto mb-4 max-h-48 rounded-lg">
+                    <label for="fotoInput2" class="cursor-pointer bg-primary text-white px-6 py-2 rounded-lg inline-block hover:bg-[#5A6B4A] transition">
+                        Ganti Foto 2
+                    </label>
+                    <p class="text-gray-500 text-sm mt-2">Format: JPG, PNG (Max 5MB)</p>
+                {% else %}
+                    <div id="placeholderGroup2">
+                        <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                        <label for="fotoInput2" class="cursor-pointer bg-primary text-white px-6 py-2 rounded-lg inline-block hover:bg-[#5A6B4A] transition">
+                            Upload Foto 2
+                        </label>
+                    </div>
+                    <img src="" alt="Preview" id="imagePreview2" class="mx-auto mb-4 max-h-48 rounded-lg" style="display: none;">
+                    <p id="placeholderHelp2" class="text-gray-500 text-sm mt-2">Format: JPG, PNG (Max 5MB)</p>
+                    <div id="changeButtonContainer2" class="mt-4"></div>
+                {% endif %}
 
-                <div id="changeButtonContainer"></div>
+                <input type="file" name="foto_2" id="fotoInput2" accept="image/*" class="hidden">
+            </div>
+        </div>
+        <div class="mb-6">
+            <label class="block text-gray-700 font-bold mb-2">FOTO LAPANGAN 3</label>
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center" id="uploadBox3">
+                
+                {% if lapangan and lapangan.foto_3 %}
+                    <img src="{{ lapangan.foto_3.url }}" alt="Preview" id="imagePreview3" class="mx-auto mb-4 max-h-48 rounded-lg">
+                    <label for="fotoInput3" class="cursor-pointer bg-primary text-white px-6 py-2 rounded-lg inline-block hover:bg-[#5A6B4A] transition">
+                        Ganti Foto 3
+                    </label>
+                    <p class="text-gray-500 text-sm mt-2">Format: JPG, PNG (Max 5MB)</p>
+                {% else %}
+                    <div id="placeholderGroup3">
+                        <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                        <label for="fotoInput3" class="cursor-pointer bg-primary text-white px-6 py-2 rounded-lg inline-block hover:bg-[#5A6B4A] transition">
+                            Upload Foto 3
+                        </label>
+                    </div>
+                    <img src="" alt="Preview" id="imagePreview3" class="mx-auto mb-4 max-h-48 rounded-lg" style="display: none;">
+                    <p id="placeholderHelp3" class="text-gray-500 text-sm mt-2">Format: JPG, PNG (Max 5MB)</p>
+                    <div id="changeButtonContainer3" class="mt-4"></div>
+                {% endif %}
+
+                <input type="file" name="foto_3" id="fotoInput3" accept="image/*" class="hidden">
             </div>
         </div>
         <div class="mb-6">
@@ -114,47 +161,64 @@
 
 {% block extra_js %}
 <script>
-    document.getElementById('fotoInput').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
+    /**
+     * Fungsi generik untuk setup preview gambar.
+     * @param {string} inputId ID dari elemen <input type="file">
+     * @param {string} previewId ID dari elemen <img> untuk preview
+     * @param {string} placeholderGroupId ID dari <div> placeholder (ikon + tombol upload awal)
+     * @param {string} placeholderHelpId ID dari <p> teks bantuan awal
+     * @param {string} changeButtonContainerId ID dari <div> untuk tombol "Ganti Foto"
+     */
+    function setupImagePreview(inputId, previewId, placeholderGroupId, placeholderHelpId, changeButtonContainerId) {
+        const fileInput = document.getElementById(inputId);
+        // Cek jika elemen input tidak ada
+        if (!fileInput) {
+            console.warn(`Elemen input file dengan ID "${inputId}" tidak ditemukan.`);
+            return;
+        }
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            let preview = document.getElementById('imagePreview');
-            
-            if (preview) {
-                // Kasus 1: Preview sudah ada (Mode Edit atau ganti foto lagi)
-                preview.src = e.target.result;
-            } else {
-                // Kasus 2: Preview belum ada (Mode Create, upload pertama kali)
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                let preview = document.getElementById(previewId);
                 
-                // Sembunyikan placeholder
-                const placeholderGroup = document.getElementById('placeholderGroup');
-                const placeholderHelp = document.getElementById('placeholderHelp');
+                const placeholderGroup = document.getElementById(placeholderGroupId);
+                const placeholderHelp = document.getElementById(placeholderHelpId);
+                const changeButtonContainer = document.getElementById(changeButtonContainerId);
+
+                // Sembunyikan placeholder awal
                 if (placeholderGroup) placeholderGroup.style.display = 'none';
                 if (placeholderHelp) placeholderHelp.style.display = 'none';
 
-                // Buat elemen img preview baru
-                preview = document.createElement('img');
-                preview.id = 'imagePreview';
-                preview.className = 'mx-auto mb-4 max-h-48 rounded-lg';
-                preview.src = e.target.result;
-                
-                // Masukkan preview ke dalam box
-                const uploadBox = document.getElementById('uploadBox');
-                uploadBox.prepend(preview); // Taruh di paling atas dalam box
+                // Tampilkan gambar preview
+                if (preview) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
 
-                // Buat dan tampilkan tombol "Ganti Foto" + help text
-                const changeButtonContainer = document.getElementById('changeButtonContainer');
-                changeButtonContainer.innerHTML = `
-                    <label for="fotoInput" class="cursor-pointer bg-primary text-white px-6 py-2 rounded-lg inline-block hover:bg-[#5A6B4A] transition">
-                        Ganti Foto
-                    </label>
-                    <p class="text-gray-500 text-sm mt-2">Format: JPG, PNG (Max 5MB)</p>
-                `;
+                // Tampilkan tombol "Ganti Foto" dan teks bantuan
+                if (changeButtonContainer) {
+                    // Cek agar tidak duplikat tombol
+                    if (!changeButtonContainer.innerHTML.trim()) {
+                        changeButtonContainer.innerHTML = `
+                            <label for="${inputId}" class="cursor-pointer bg-primary text-white px-6 py-2 rounded-lg inline-block hover:bg-[#5A6B4A] transition">
+                                Ganti Foto
+                            </label>
+                            <p class="text-gray-500 text-sm mt-2">Format: JPG, PNG (Max 5MB)</p>
+                        `;
+                    }
+                }
             }
-        }
-        reader.readAsDataURL(file);
-    });
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // Panggil fungsi setup untuk SETIAP input file
+    setupImagePreview('fotoInput1', 'imagePreview1', 'placeholderGroup1', 'placeholderHelp1', 'changeButtonContainer1');
+    setupImagePreview('fotoInput2', 'imagePreview2', 'placeholderGroup2', 'placeholderHelp2', 'changeButtonContainer2');
+    setupImagePreview('fotoInput3', 'imagePreview3', 'placeholderGroup3', 'placeholderHelp3', 'changeButtonContainer3');
 </script>
 {% endblock %}
