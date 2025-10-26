@@ -102,7 +102,7 @@
 
 <script>
 const field_id = "{{ field.id }}";
-fetch(`/review/${field_id}/?limit=4`, {
+fetch(`/gallery/${field_id}/`, {
   headers: { "x-requested-with": "XMLHttpRequest" }
 })
   .then(res => res.json())

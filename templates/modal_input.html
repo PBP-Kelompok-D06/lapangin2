@@ -33,6 +33,7 @@
 
 <script>
 let selectedRating = 0;
+const fieldId = "{{ field.id }}";
 
 document.querySelectorAll('.star').forEach(star => {
   star.addEventListener('click', () => {
@@ -142,6 +143,7 @@ function addReviewToDOM(review) {
   container.style.paddingBottom = '24px';
   container.style.borderBottom = '1px solid #ddd';
 
+
   container.innerHTML = `
     <div class="profile" style="position: relative; display: flex; align-items: center; gap: 24px; align-self: stretch;">
       <div class="h-8 w-8 rounded-full bg-[#CFE1A5] flex items-center justify-center text-[#4F4F4F] font-bold text-sm border-2 border-primary" style="width: 32px; height: 32px; border-radius: 50%; background: #CFE1A5; display: flex; align-items: center; justify-content: center; color: #4F4F4F; font-weight: bold; font-size: 14px; border: 2px solid #B8D279;">
@@ -151,9 +153,8 @@ function addReviewToDOM(review) {
         <h1 style=" font-size: 24px; font-weight: 600; color: #212121; line-height: 120%;">
           ${review.user}
         </h1>
-        <p style="font-family: Montserrat; font-size: 13px; font-weight: 400; line-height: 120%; letter-spacing: 0.26px; color: #555;">
-          ${review.created_at}
-        </p>
+        <p style="font-size: 13px; font-weight: 400; line-height: 120%; letter-spacing: 0.26px; color: #555;">
+          Baru saja </p>
       </div>
     </div>
 
@@ -211,13 +212,14 @@ function addReviewToDOM(review) {
     document.addEventListener('click', () => {
       dropdownMenu.style.display = 'none';
     });
-
+    
     dropdownMenu.querySelector('.delete-btn').addEventListener('click', () => {
       const modal = document.getElementById('HapusModal');
       const btnBatal = document.getElementById('btnBatalLogin');
       const btnHapus = document.getElementById('btnHapus');
 
       modal.classList.remove('hidden');
+      modal.dataset.reviewId = review.id;
       modal.classList.add('flex');
 
       btnBatal.onclick = () => {
@@ -225,6 +227,7 @@ function addReviewToDOM(review) {
         modal.classList.remove('flex');
       };
       const reviewId = modal.dataset.reviewId;
+
 
       btnHapus.onclick = () => {
         fetch(`/review/delete/${reviewId}/`, {
@@ -246,7 +249,8 @@ function addReviewToDOM(review) {
           loadRatingStatistics(fieldId);
 
         })
-        .catch(() => {
+        .catch(err => {
+          console.error('Fetch error:', err);
           showToast('Gagal', 'Terjadi kesalahan jaringan', 'error');
           modal.classList.add('hidden');
           modal.classList.remove('flex');
@@ -260,6 +264,7 @@ function addReviewToDOM(review) {
       const contentInput = document.getElementById('content');
       const submitBtn = document.getElementById('submit-btn');
       const stars = modal.querySelectorAll('.star');
+
 
       modal.dataset.mode = 'edit';
       modal.dataset.reviewId = review.id;

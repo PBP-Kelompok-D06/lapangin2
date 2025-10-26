@@ -195,15 +195,19 @@ def add_review(request, field_id):
             rating=rating,
         )
         field.update_rating()
+        review.id = review.id
 
         return JsonResponse({
             "success": True,
             "message": "Review berhasil ditambahkan!",
+            "fieldId": field_id,
+
             "review":{
+                "id": review.id,
                 "user": user.username,
                 "content": review.content,
                 "rating": review.rating,
-                "created_at": review.created_at,
+                "created_at": review.created_at.strftime("%d %b %Y %H:%M"),
                 "is_owner": True
             }
         })

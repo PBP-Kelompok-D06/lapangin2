@@ -5,11 +5,12 @@
 {% block title %}All Reviews{% endblock title %}
 
 {% block content %}
+<section class="min-h-screen pb-16 bg-gray-50">
 <button id="btn-back" class="mt-12 bg-[#a7bf6e] hover:bg-[#4f4f4f] text-white font-semibold py-3 px-8 rounded-md shadow-md transition">
     < Kembali ke Detail Lapangan
 </button>
 
-<h1 id="ulasan" style="margin-top: 56px; margin-bottom:28px; display: flex;width: 1000px;height: 38px;flex-direction: column;justify-content: center;flex-shrink: 0; color: var(--Foundation-Primary-primary-900, #4D5833);font-size: 32px;font-style: normal;font-weight: 600;line-height: 120%;">Ulasan untuk {{ field.nama_lapangan }}</h1>
+<h1 id="ulasan" style="margin-top: 56px; margin-bottom:28px; display: flex;width-max: 1000px;height: 38px;flex-direction: column;justify-content: center;flex-shrink: 0; color: var(--Foundation-Primary-primary-900, #4D5833);font-size: 32px;font-style: normal;font-weight: 600;line-height: 120%;">Ulasan untuk {{ field.nama_lapangan }}</h1>
 {% include 'rating_stats.html' %}
 
 <div style="display: flex; justify-content: flex-end; width: 100%;">
@@ -107,6 +108,7 @@
       class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Next &raquo;</a>
   {% endif %}
 </div>
+</section>
 
 
 <script>
