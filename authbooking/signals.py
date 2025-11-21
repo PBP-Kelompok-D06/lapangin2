@@ -7,12 +7,18 @@ from .models import Profile
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
-    """Otomatis buat Profile saat User dibuat"""
+    """
+    Fungsi ini otomatis dijalankan setiap kali model User disimpan.
+    Kalau User baru dibuat (created == True), maka kita buat juga Profile-nya.
+    """
     if created:
         Profile.objects.create(user=instance)
 
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
-    """Save Profile saat User di-save"""
+    """
+    Fungsi ini dijalankan setiap kali User di-save.
+    Tujuannya untuk memastikan Profile yang terkait juga ikut tersimpan.
+    """
     if hasattr(instance, 'profile'):
         instance.profile.save()

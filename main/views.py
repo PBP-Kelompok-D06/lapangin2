@@ -1,9 +1,11 @@
+from django.http import HttpResponse
 from django.shortcuts import render
 from django.core.paginator import Paginator
 from booking.models import Lapangan
 from django.templatetags.static import static
 from django.contrib.staticfiles.finders import find
 import os
+import requests
 
 def show_landing_page(request):
     """Menampilkan Landing Page Lapang.in dengan daftar lapangan dan pagination."""
@@ -12,7 +14,7 @@ def show_landing_page(request):
 
     # Ambil queryset awal dan PASTIKAN ADA URUTAN (misal berdasarkan ID)
     # Ini juga mengatasi UnorderedObjectListWarning
-    lapangan_queryset = Lapangan.objects.all().order_by('pk') # <-- TAMBAHKAN .order_by('pk')
+    lapangan_queryset = Lapangan.objects.all().order_by('pk') 
 
     # === Filter jenis olahraga ===
     if jenis_filter != 'all':
@@ -66,3 +68,21 @@ def show_landing_page(request):
         'show_navbar':True,
     }
     return render(request, 'landing_page.html', context)
+
+def proxy_image(request):
+    image_url = request.GET.get('url')
+    if not image_url:
+        return HttpResponse('No URL provided', status=400)
+    
+    try:
+        # Fetch image from external source
+        response = requests.get(image_url, timeout=10)
+        response.raise_for_status()
+        
+        # Return the image with proper content type
+        return HttpResponse(
+            response.content,
+            content_type=response.headers.get('Content-Type', 'image/jpeg')
+        )
+    except requests.RequestException as e:
+        return HttpResponse(f'Error fetching image: {str(e)}', status=500)

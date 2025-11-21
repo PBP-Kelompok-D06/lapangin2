@@ -52,7 +52,7 @@
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     const form = document.getElementById("login-form");
-
+    // Fungsi untuk menampilkan toast (popup notifikasi)
     function showToast(title, message, type="info", duration=3000) {
         const toast = document.getElementById("toast-component");
         const icon = document.getElementById("toast-icon");
@@ -65,9 +65,11 @@ document.addEventListener("DOMContentLoaded", function() {
         let bgColor = "bg-gray-200";
         icon.innerHTML = "ℹ️";
 
+        // Tentukan warna dan ikon berdasarkan jenis notifikasi
         if(type === "success") { bgColor = "bg-green-100"; icon.innerHTML = "✅"; }
         else if(type === "error") { bgColor = "bg-red-100"; icon.innerHTML = "❌"; }
 
+        // Tampilkan toast dengan animasi
         toast.classList.remove("opacity-0", "translate-y-10", "pointer-events-none");
         toast.classList.add("opacity-100", bgColor);
 
@@ -77,38 +79,40 @@ document.addEventListener("DOMContentLoaded", function() {
         }, duration);
     }
 
+    // ini bagian ajax
     form.addEventListener("submit", function(e) {
-        e.preventDefault();
+        e.preventDefault();  // Mencegah form submit secara normal (reload halaman)
 
-        const formData = new FormData(form);
-        const nextInput = document.createElement("input");
+        const formData = new FormData(form);  // Ambil data dari form
+        const nextInput = document.createElement("input"); // Tambahkan input "next" (redirect tujuan setelah login)
         nextInput.type = "hidden";
         nextInput.name = "next";
         nextInput.value = "{{ next }}";
         formData.append("next", nextInput.value);
-
+        //  Kirim request ke server via AJAX (fetch)
         fetch("{% url 'authbooking:login' %}", {
             method: "POST",
             headers: {
                 "X-Requested-With": "XMLHttpRequest",
-                "X-CSRFToken": form.querySelector('[name="csrfmiddlewaretoken"]').value
+                "X-CSRFToken": form.querySelector('[name="csrfmiddlewaretoken"]').value // Sertakan CSRF token agar lolos validasi Django
             },
-            body: formData
+            body: formData // Kirim data form ke server
         })
         .then(res => res.json())
         .then(data => {
             form.querySelectorAll(".error-message").forEach(el => el.textContent = "");
 
-            if(data.success) {
+            if(data.success) { //klo login sukses, tampilin notif dan masuk ke halaman tujuan
                 showToast("Login Berhasil", data.message, "success");
                 setTimeout(() => { window.location.href = data.redirect_url; }, 800);
-            } else {
+            } else { // jika gagal, tampilkan pesan error di bawah field yang salah
                 for (let field in data.errors) {
                     const input = document.getElementById(`id_${field}`) || document.getElementById(field);
                     if(input){
                         const errDiv = input.parentNode.querySelector(".error-message");
                         if(errDiv) errDiv.textContent = data.errors[field].join(", ");
                     } else {
+                        // Kalau error umum, tampilkan di atas form
                         const div = document.createElement("div");
                         div.classList.add("text-xs", "text-red-500", "mb-2");
                         div.textContent = data.errors[field].join(", ");

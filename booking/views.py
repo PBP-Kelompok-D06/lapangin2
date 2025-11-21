@@ -107,23 +107,20 @@ def create_booking(request):
         try:
             data = json.loads(request.body)
             slot_id = data.get('slot_id')
-            slot = get_object_or_404(SlotTersedia, pk=slot_id) # <-- Baris ini harus aman
+            slot = get_object_or_404(SlotTersedia, pk=slot_id) 
             
-            # ... (Tahap 1: Validasi Status Pending tetap sama) ...
             
-            # Hitung total pembayaran (Perbaikan: Memastikan nilai tidak NULL)
+            # Hitung total pembayaran
             raw_price = slot.lapangan.harga_per_jam
             total_bayar = raw_price if raw_price is not None else 0
             
-            # --- PERBAIKAN KRITIS: INPUT FIELD KE MODEL CREATE ---
+            # --- INPUT FIELD KE MODEL CREATE ---
             booking = Booking.objects.create(
                 user=request.user,
                 slot=slot,
                 # TANGGAL BOOKING: Gunakan tanggal slot atau waktu sekarang
-                # Asumsi di Model Anda memiliki auto_now_add=True atau field tidak wajib. 
-                # Jika wajib, kita gunakan tanggal dari slot:
-                tanggal_booking=slot.tanggal, # <--- TAMBAHKAN INI
-                total_bayar=total_bayar,     # <--- TAMBAHKAN INI
+                tanggal_booking=slot.tanggal, 
+                total_bayar=total_bayar,     
                 status_pembayaran='PENDING' 
             )
             # ----------------------------------------------------

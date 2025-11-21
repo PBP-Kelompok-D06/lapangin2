@@ -134,7 +134,7 @@
 
 {% block extra_script %}
 <script>
-// ✅ TAMBAHAN KRITIS: Fungsi untuk mendapatkan CSRF token
+// Fungsi untuk mendapatkan CSRF token
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrftoken // ✅ TAMBAHAN KRITIS: CSRF Token
+                    'X-CSRFToken': csrftoken 
                 },
                 body: JSON.stringify({ slot_id: selectedSlotId })
             });
