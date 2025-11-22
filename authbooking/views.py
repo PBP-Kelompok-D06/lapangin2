@@ -142,34 +142,96 @@ def login_flutter(request):
 @csrf_exempt
 def register_flutter(request):
     if request.method == 'POST':
-        data = json.loads(request.body)
-        username = data['username']
-        password1 = data['password1']
-        password2 = data['password2']
+        try:
+            data = json.loads(request.body)
+            username = data.get('username', '').strip()
+            password1 = data.get('password1', '')
+            password2 = data.get('password2', '')
+            role = data.get('role', 'PENYEWA')
+            nomor_whatsapp = data.get('nomor_whatsapp', '').strip()
+            nomor_rekening = data.get('nomor_rekening', '').strip()
 
-        # Check if the passwords match
-        if password1 != password2:
+            # Validasi username
+            if not username:
+                return JsonResponse({
+                    "status": False,
+                    "message": "Username cannot be empty."
+                }, status=400)
+
+            # Validasi password match
+            if password1 != password2:
+                return JsonResponse({
+                    "status": False,
+                    "message": "Passwords do not match."
+                }, status=400)
+            
+            # Cek username sudah ada
+            if User.objects.filter(username=username).exists():
+                return JsonResponse({
+                    "status": False,
+                    "message": "Username already exists."
+                }, status=400)
+            
+            # Validasi panjang password
+            if len(password1) < 8:
+                return JsonResponse({
+                    "status": False,
+                    "message": "Password must be at least 8 characters."
+                }, status=400)
+            
+            # Validasi khusus untuk PEMILIK
+            if role == 'PEMILIK':
+                if not nomor_whatsapp:
+                    return JsonResponse({
+                        "status": False,
+                        "message": "WhatsApp number is required for Field Owners."
+                    }, status=400)
+                
+                if not nomor_rekening:
+                    return JsonResponse({
+                        "status": False,
+                        "message": "Account number is required for Field Owners."
+                    }, status=400)
+                
+                # Validasi format WhatsApp
+                if not nomor_whatsapp.startswith('+62'):
+                    return JsonResponse({
+                        "status": False,
+                        "message": "WhatsApp number must start with +62."
+                    }, status=400)
+                
+                digits_only = nomor_whatsapp[1:].replace('+', '')
+                if not digits_only.isdigit():
+                    return JsonResponse({
+                        "status": False,
+                        "message": "WhatsApp number must contain only digits after '+'."
+                    }, status=400)
+
+            # Buat user baru
+            user = User.objects.create_user(username=username, password=password1)
+            user.save()
+            
+            # Buat Profile
+            Profile.objects.create(
+                user=user,
+                role=role,
+                nomor_whatsapp=nomor_whatsapp if role == 'PEMILIK' and nomor_whatsapp else None,
+                nomor_rekening=nomor_rekening if role == 'PEMILIK' and nomor_rekening else None
+            )
+            
+            # PENTING: Return dengan status True
+            return JsonResponse({
+                "username": user.username,
+                "status": True,  # ← HARUS True (boolean)
+                "message": f"Account created successfully! Welcome, {username}!"
+            }, status=200)
+        
+        except Exception as e:
+            print(f"🔴 Registration error: {str(e)}")
             return JsonResponse({
                 "status": False,
-                "message": "Passwords do not match."
-            }, status=400)
-        
-        # Check if the username is already taken
-        if User.objects.filter(username=username).exists():
-            return JsonResponse({
-                "status": False,
-                "message": "Username already exists."
-            }, status=400)
-        
-        # Create the new user
-        user = User.objects.create_user(username=username, password=password1)
-        user.save()
-        
-        return JsonResponse({
-            "username": user.username,
-            "status": 'success',
-            "message": "User created successfully!"
-        }, status=200)
+                "message": f"Registration failed: {str(e)}"
+            }, status=500)
     
     else:
         return JsonResponse({
