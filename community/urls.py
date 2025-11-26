@@ -49,4 +49,20 @@ urlpatterns = [
     path('json/', views.show_json, name='show_json'),
     path('xml/<int:id>/', views.show_xml_by_id, name='show_xml_by_id'),
     path('json/<int:id>/', views.show_json_by_id, name='show_json_by_id'),
+
+    # --- NEW CUSTOM API ENDPOINTS (Lebih Lengkap) ---
+    # Mendapatkan list semua komunitas dengan detail lengkap
+    path('api/communities/', views.show_json_all_communities, name='api_all_communities'),
+    
+    # Mendapatkan post forum berdasarkan ID komunitas
+    path('api/community/<int:pk>/posts/', views.show_json_community_posts, name='api_community_posts'),
+    
+    # Mendapatkan komentar berdasarkan ID post
+    path('api/post/<int:post_id>/comments/', views.show_json_post_comments, name='api_post_comments'),
+    
+    # Mendapatkan status request user (harus login)
+    path('api/my-requests/', views.show_json_my_requests, name='api_my_requests'),
+
+    # Endpoint buat create dari mobile (opsional)
+    path('api/create-flutter/', views.create_community_flutter, name='api_create_flutter'),
 ]
