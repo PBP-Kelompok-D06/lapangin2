@@ -494,8 +494,8 @@ def show_json_by_id(request, id):
 
 def show_json_all_communities(request):
     """
-    Mengembalikan list semua komunitas dengan detail yang lebih rapi 
-    (termasuk URL gambar dan username pembuat).
+    GET: Mengembalikan list semua komunitas dengan detail lengkap.
+    URL: /community/api/communities/
     """
     communities = Community.objects.filter(is_active=True)
     data = []
@@ -507,19 +507,20 @@ def show_json_all_communities(request):
             'description': c.description,
             'location': c.location,
             'sports_type': c.sports_type,
-            'member_count': c.members.filter(is_active=True).count(), # Hitung real-time
+            'member_count': c.members.filter(is_active=True).count(), 
             'max_member': c.max_member,
-            'image_url': c.community_image.url if c.community_image else None,
+            'image_url': c.community_image.url if c.community_image else "", # Handle gambar kosong
             'contact_person': c.contact_person_name,
-            'created_by': c.created_by.username, # Ambil username, bukan ID
+            'contact_phone': c.contact_phone,
+            'created_by': c.created_by.username, # Username, bukan ID
         })
     
     return JsonResponse(data, safe=False)
 
 def show_json_community_posts(request, pk):
     """
-    Mengembalikan list post dalam satu komunitas spesifik.
-    Berguna untuk load forum via AJAX/Mobile.
+    GET: Mengembalikan list post dalam satu komunitas.
+    URL: /community/api/community/<pk>/posts/
     """
     community = get_object_or_404(Community, pk=pk)
     posts = CommunityPost.objects.filter(community=community).select_related('user').order_by('-created_at')
@@ -539,13 +540,15 @@ def show_json_community_posts(request, pk):
         })
         
     return JsonResponse({
+        'community_pk': community.pk,
         'community_name': community.community_name,
         'posts': data
     })
 
 def show_json_post_comments(request, post_id):
     """
-    Mengembalikan komentar dari sebuah post.
+    GET: Mengembalikan semua komentar di sebuah post.
+    URL: /community/api/post/<post_id>/comments/
     """
     post = get_object_or_404(CommunityPost, pk=post_id)
     comments = PostComment.objects.filter(post=post).select_related('user').order_by('created_at')
@@ -554,7 +557,9 @@ def show_json_post_comments(request, post_id):
     for comment in comments:
         data.append({
             'pk': comment.pk,
-            'user': comment.user.username,
+            'user': {
+                'username': comment.user.username,
+            },
             'content': comment.content,
             'created_at': comment.created_at.strftime("%Y-%m-%d %H:%M")
         })
@@ -564,7 +569,8 @@ def show_json_post_comments(request, post_id):
 @login_required
 def show_json_my_requests(request):
     """
-    Mengembalikan status request komunitas milik user yang sedang login.
+    GET: Mengembalikan daftar request komunitas user (perlu login).
+    URL: /community/api/my-requests/
     """
     requests = CommunityRequest.objects.filter(requester=request.user)
     data = []
@@ -573,8 +579,8 @@ def show_json_my_requests(request):
         data.append({
             'community_name': req.community_name,
             'sports_type': req.sports_type,
-            'status': req.status, # pending/approved/rejected
-            'request_date': req.request_date.strftime("%Y-%m-%d"),
+            'status': req.status,
+            'request_date': req.request_date.strftime("%d %b %Y"),
             'admin_notes': req.admin_notes
         })
         
