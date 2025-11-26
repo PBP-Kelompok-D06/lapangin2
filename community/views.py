@@ -491,3 +491,132 @@ def show_xml_by_id(request, id):
 def show_json_by_id(request, id):
     data = serializers.serialize("json", Community.objects.filter(pk=id))
     return HttpResponse(data, content_type="application/json")
+
+def show_json_all_communities(request):
+    """
+    Mengembalikan list semua komunitas dengan detail yang lebih rapi 
+    (termasuk URL gambar dan username pembuat).
+    """
+    communities = Community.objects.filter(is_active=True)
+    data = []
+    
+    for c in communities:
+        data.append({
+            'pk': c.pk,
+            'community_name': c.community_name,
+            'description': c.description,
+            'location': c.location,
+            'sports_type': c.sports_type,
+            'member_count': c.members.filter(is_active=True).count(), # Hitung real-time
+            'max_member': c.max_member,
+            'image_url': c.community_image.url if c.community_image else None,
+            'contact_person': c.contact_person_name,
+            'created_by': c.created_by.username, # Ambil username, bukan ID
+        })
+    
+    return JsonResponse(data, safe=False)
+
+def show_json_community_posts(request, pk):
+    """
+    Mengembalikan list post dalam satu komunitas spesifik.
+    Berguna untuk load forum via AJAX/Mobile.
+    """
+    community = get_object_or_404(Community, pk=pk)
+    posts = CommunityPost.objects.filter(community=community).select_related('user').order_by('-created_at')
+    
+    data = []
+    for post in posts:
+        data.append({
+            'pk': post.pk,
+            'user': {
+                'username': post.user.username,
+                'id': post.user.id
+            },
+            'content': post.content,
+            'image_url': post.image.url if post.image else None,
+            'created_at': post.created_at.strftime("%Y-%m-%d %H:%M"),
+            'comments_count': post.comments.count()
+        })
+        
+    return JsonResponse({
+        'community_name': community.community_name,
+        'posts': data
+    })
+
+def show_json_post_comments(request, post_id):
+    """
+    Mengembalikan komentar dari sebuah post.
+    """
+    post = get_object_or_404(CommunityPost, pk=post_id)
+    comments = PostComment.objects.filter(post=post).select_related('user').order_by('created_at')
+    
+    data = []
+    for comment in comments:
+        data.append({
+            'pk': comment.pk,
+            'user': comment.user.username,
+            'content': comment.content,
+            'created_at': comment.created_at.strftime("%Y-%m-%d %H:%M")
+        })
+        
+    return JsonResponse({'comments': data})
+
+@login_required
+def show_json_my_requests(request):
+    """
+    Mengembalikan status request komunitas milik user yang sedang login.
+    """
+    requests = CommunityRequest.objects.filter(requester=request.user)
+    data = []
+    
+    for req in requests:
+        data.append({
+            'community_name': req.community_name,
+            'sports_type': req.sports_type,
+            'status': req.status, # pending/approved/rejected
+            'request_date': req.request_date.strftime("%Y-%m-%d"),
+            'admin_notes': req.admin_notes
+        })
+        
+    return JsonResponse(data, safe=False)
+
+@csrf_exempt
+def create_community_flutter(request):
+    """
+    Endpoint khusus untuk membuat komunitas dari Mobile (Flutter)
+    karena biasanya mengirim JSON body, bukan Form data biasa.
+    """
+    if request.method == 'POST':
+        try:
+            # Handle jika data dikirim sebagai JSON string
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+            else:
+                # Fallback ke POST data biasa
+                data = request.POST
+
+            # Pastikan user login (bisa pakai token authentication nanti untuk mobile)
+            if not request.user.is_authenticated:
+                 return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
+
+            new_community = Community.objects.create(
+                community_name=data.get('community_name'),
+                description=data.get('description'),
+                location=data.get('location'),
+                sports_type=data.get('sports_type', 'futsal'),
+                max_member=int(data.get('max_member', 50)),
+                contact_person_name=data.get('contact_person_name', request.user.username),
+                contact_phone=data.get('contact_phone', ''),
+                created_by=request.user,
+                is_active=True # Default true jika via mobile user biasa (sesuaikan logika bisnis)
+            )
+            
+            # Note: Handle upload gambar via API perlu logika tambahan (base64 atau multipart)
+            
+            return JsonResponse({'status': 'success', 'message': 'Community created successfully', 'id': new_community.pk})
+        
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+            
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+
