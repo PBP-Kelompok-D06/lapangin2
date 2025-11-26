@@ -626,3 +626,137 @@ def create_community_flutter(request):
             
     return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
 
+# ... (lanjutan dari imports yang sudah ada)
+
+@csrf_exempt
+def join_community_flutter(request, pk):
+    """
+    Endpoint untuk join komunitas via Mobile
+    URL: /community/api/<pk>/join-flutter/
+    """
+    if request.method == 'POST':
+        try:
+            if not request.user.is_authenticated:
+                return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
+
+            community = get_object_or_404(Community, pk=pk, is_active=True)
+
+            # Cek apakah komunitas penuh
+            if community.member_count >= community.max_member:
+                return JsonResponse({'status': 'error', 'message': 'Komunitas sudah penuh!'}, status=400)
+
+            # Cek status member
+            member, created = CommunityMember.objects.get_or_create(
+                community=community,
+                user=request.user,
+                defaults={'is_active': True}
+            )
+
+            if not created and member.is_active:
+                 return JsonResponse({'status': 'info', 'message': 'Anda sudah terdaftar di komunitas ini.'})
+            
+            # Jika user kembali join (sebelumnya leave)
+            member.is_active = True
+            member.save()
+            
+            # Update counter member di model Community
+            community.member_count = community.members.filter(is_active=True).count()
+            community.save()
+
+            return JsonResponse({'status': 'success', 'message': f'Berhasil bergabung ke {community.community_name}'})
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+def leave_community_flutter(request, pk):
+    """
+    Endpoint untuk leave komunitas via Mobile
+    URL: /community/api/<pk>/leave-flutter/
+    """
+    if request.method == 'POST':
+        try:
+            if not request.user.is_authenticated:
+                return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
+
+            community = get_object_or_404(Community, pk=pk)
+            
+            member = CommunityMember.objects.get(community=community, user=request.user)
+            member.is_active = False
+            member.save()
+
+            # Update counter
+            community.member_count = community.members.filter(is_active=True).count()
+            community.save()
+
+            return JsonResponse({'status': 'success', 'message': f'Anda telah keluar dari {community.community_name}'})
+
+        except CommunityMember.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Anda bukan anggota komunitas ini.'}, status=404)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+            
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+def delete_post_flutter(request, pk):
+    """
+    Endpoint untuk menghapus post sendiri via Mobile
+    URL: /community/api/post/<pk>/delete-flutter/
+    """
+    if request.method == 'POST':
+        try:
+            if not request.user.is_authenticated:
+                 return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
+
+            post = get_object_or_404(CommunityPost, pk=pk)
+
+            # Validasi kepemilikan
+            if post.user != request.user:
+                return JsonResponse({'status': 'error', 'message': 'Anda tidak memiliki izin menghapus post ini.'}, status=403)
+
+            post.delete()
+            return JsonResponse({'status': 'success', 'message': 'Post berhasil dihapus'})
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+def create_request_flutter(request):
+    """
+    Endpoint untuk Member merequest komunitas baru (bukan langsung jadi)
+    URL: /community/api/request-flutter/
+    """
+    if request.method == 'POST':
+        try:
+            if not request.user.is_authenticated:
+                 return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
+
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+            else:
+                data = request.POST
+
+            # Buat Request Baru
+            CommunityRequest.objects.create(
+                requester=request.user,
+                community_name=data.get('community_name'),
+                description=data.get('description'),
+                sports_type=data.get('sports_type'),
+                location_preference=data.get('location_preference')
+            )
+
+            return JsonResponse({'status': 'success', 'message': 'Request komunitas berhasil dikirim!'})
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+
