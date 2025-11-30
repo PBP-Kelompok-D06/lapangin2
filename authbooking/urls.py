@@ -1,4 +1,4 @@
-# ini lapangin2/authbooking/urls.py
+# lapangin2/authbooking/urls.py
 from . import views
 from django.urls import path
 
