@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Avg
 
+
 def review_list(request, field_id):
     field = get_object_or_404(Field, id=field_id)
     
@@ -33,7 +34,7 @@ def review_list(request, field_id):
         review.is_owner = review.user.user == request.user
         review.id = review.id
 
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' :
         reviews_data = [
             {
                 "id": review.id,
@@ -54,6 +55,49 @@ def review_list(request, field_id):
         'field': field,
         'show_navbar': True
     })
+
+def review_list_json(request, field_id):
+    field = get_object_or_404(Field, id=field_id)
+    
+    filter_rating = request.GET.get('filter', 'all')
+    
+    reviews = Review.objects.filter(field=field)
+    
+    if filter_rating == 'terbaru':
+        reviews = reviews.order_by('-created_at')
+    elif filter_rating != 'all':
+        try:
+            rating_value = int(filter_rating)
+            if 1 <= rating_value <= 5:
+                reviews = reviews.filter(rating=rating_value).order_by('-created_at')
+            else:
+                reviews = reviews.order_by('-created_at')
+        except ValueError:
+            reviews = reviews.order_by('-created_at')
+    else:
+        reviews = reviews.order_by('-created_at')
+
+    for review in reviews:
+        review.is_owner = review.user.user == request.user
+        review.id = review.id
+
+    reviews_data = [
+        {
+            "id": review.id,
+            "field_id": field_id,
+            "user": review.user.user.username,
+            "content": review.content,
+            "rating": review.rating,
+            "created_at": review.created_at.strftime("%d %b %Y %H:%M"),
+            "is_owner": review.user.user == request.user
+        }
+        for review in reviews
+    ]
+    
+
+    return JsonResponse(reviews_data, safe=False)
+
+
 
 def review_list_in_gallery(request, field_id):
     field = get_object_or_404(Field, id=field_id)
@@ -213,19 +257,6 @@ def add_review(request, field_id):
         })
     return JsonResponse({"success": False, "error": "Invalid method"}, status=405)
 
-def get_review_detail(request, review_id):
-    review = get_object_or_404(Review, id=review_id)
-    data = {
-        "id": review.id,
-        "user": review.user.user.username, # Review -> Profile -> User -> Username
-        "content": review.content,
-        "rating": review.rating,
-        "created_at": review.created_at.strftime("%d %b %Y %H:%M"),
-        "is_owner": review.user.user == request.user
-    }
-    
-    # 3. Return response
-    return JsonResponse(data)
 
 @csrf_exempt 
 def add_review_api(request, field_id):
