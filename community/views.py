@@ -1,5 +1,6 @@
 # pbp-kelompok-d06/lapangin/lapangin-feat-admin-dashboard/community/views.py
 
+import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
@@ -7,6 +8,7 @@ from django.http import HttpResponse, JsonResponse # ✅ TAMBAHKAN JsonResponse
 from django.core import serializers
 from django.db.models import Q, Count
 from .models import Community, CommunityMember, CommunityPost, PostComment, CommunityRequest
+from django.views.decorators.csrf import csrf_exempt
 # 🔽 (Hapus render_to_string jika ada, kita tidak membutuhkannya di sini)
 
 def is_pemilik(user):
