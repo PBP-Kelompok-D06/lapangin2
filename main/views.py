@@ -5,7 +5,9 @@ from booking.models import Lapangan
 from django.templatetags.static import static
 from django.contrib.staticfiles.finders import find
 import os
-import requests
+import requests # type: ignore
+from django.http import JsonResponse
+
 
 def show_landing_page(request):
     """Menampilkan Landing Page Lapang.in dengan daftar lapangan dan pagination."""
@@ -86,3 +88,39 @@ def proxy_image(request):
         )
     except requests.RequestException as e:
         return HttpResponse(f'Error fetching image: {str(e)}', status=500)
+    
+def get_lapangan_list(request):
+    lapangan_queryset = Lapangan.objects.all().order_by('pk')
+    
+    data = []
+    
+    for field in lapangan_queryset:
+        possible_png = f'images/lapangan{field.pk}.png'
+        possible_jpg = f'images/lapangan{field.pk}.jpg'
+        
+        image_url = ""
+
+        if find(possible_png):
+            image_url = request.build_absolute_uri(static(possible_png))
+            
+        elif find(possible_jpg):
+            image_url = request.build_absolute_uri(static(possible_jpg))
+            
+        elif field.foto_utama:
+            image_url = request.build_absolute_uri(field.foto_utama.url)
+            
+        else:
+            image_url = "https://via.placeholder.com/300x200?text=No+Image"
+
+        data.append({
+            "id": field.pk,
+            "name": field.nama_lapangan,        
+            "type": field.jenis_olahraga,      
+            "location": field.lokasi,           
+            "price": int(field.harga_per_jam),  
+            "rating": float(field.rating),      
+            "image": image_url,
+            "review_count": field.jumlah_ulasan 
+        })
+
+    return JsonResponse(data, safe=False)

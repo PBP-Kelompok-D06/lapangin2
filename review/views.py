@@ -212,3 +212,45 @@ def add_review(request, field_id):
             }
         })
     return JsonResponse({"success": False, "error": "Invalid method"}, status=405)
+
+def get_review_detail(request, review_id):
+    review = get_object_or_404(Review, id=review_id)
+    data = {
+        "id": review.id,
+        "user": review.user.user.username, # Review -> Profile -> User -> Username
+        "content": review.content,
+        "rating": review.rating,
+        "created_at": review.created_at.strftime("%d %b %Y %H:%M"),
+        "is_owner": review.user.user == request.user
+    }
+    
+    # 3. Return response
+    return JsonResponse(data)
+
+@csrf_exempt 
+def add_review_api(request, field_id):
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            return JsonResponse({"success": False, "message": "Harus login dulu!"}, status=401)
+            
+        try:
+            data = json.loads(request.body)
+            field = Field.objects.get(id=field_id)
+            profile = get_object_or_404(Profile, user=request.user)
+
+            # Buat Review Baru
+            Review.objects.create(
+                user=profile,
+                field=field,
+                rating=data.get('rating'),
+                content=data.get('content')
+            )
+            
+            # Update Rating Rata-rata Lapangan
+            field.update_rating() 
+
+            return JsonResponse({"success": True, "message": "Review berhasil!"})
+        except Exception as e:
+            return JsonResponse({"success": False, "message": str(e)}, status=400)
+            
+    return JsonResponse({"success": False, "message": "Method harus POST"}, status=405)

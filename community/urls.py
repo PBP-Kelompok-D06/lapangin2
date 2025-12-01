@@ -49,4 +49,23 @@ urlpatterns = [
     path('json/', views.show_json, name='show_json'),
     path('xml/<int:id>/', views.show_xml_by_id, name='show_xml_by_id'),
     path('json/<int:id>/', views.show_json_by_id, name='show_json_by_id'),
+
+    # === API GET ENDPOINTS (Ambil Data) ===
+    path('api/communities/', views.show_json_all_communities, name='api_all_communities'),
+    path('api/community/<int:pk>/posts/', views.show_json_community_posts, name='api_community_posts'),
+    path('api/post/<int:post_id>/comments/', views.show_json_post_comments, name='api_post_comments'),
+    path('api/my-requests/', views.show_json_my_requests, name='api_my_requests'),
+
+    # === API POST ENDPOINTS (Kirim Data dari Flutter) ===
+    path('api/create-flutter/', views.create_community_flutter, name='api_create_flutter'),
+    # path('api/<int:pk>/post/create-flutter/', views.create_post_flutter, name='api_post_create_flutter'),
+    # path('api/post/<int:post_id>/comment-flutter/', views.create_comment_flutter, name='api_comment_create_flutter'),
+
+    # === API ACTION ENDPOINTS (Fitur Interaksi) ===
+    path('api/<int:pk>/join-flutter/', views.join_community_flutter, name='api_join_flutter'),
+    path('api/<int:pk>/leave-flutter/', views.leave_community_flutter, name='api_leave_flutter'),
+    path('api/post/<int:pk>/delete-flutter/', views.delete_post_flutter, name='api_post_delete_flutter'),
+    path('api/request-flutter/', views.create_request_flutter, name='api_request_flutter'),
+
+    
 ]
