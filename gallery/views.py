@@ -2,6 +2,10 @@ from django.shortcuts import render, get_object_or_404
 from booking.models import Lapangan
 from review.models import Review  # Import model Review
 import re
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from booking.models import Lapangan
+from review.models import Review
 
 def show_gallery(request, lap_id):
     lapangan = get_object_or_404(Lapangan, pk=lap_id)
@@ -42,3 +46,53 @@ def show_gallery(request, lap_id):
         'show_navbar': True,
     }
     return render(request, 'gallery_detail.html', context)
+
+def _absolute_url(request, field):
+    return request.build_absolute_uri(field.url) if field else None
+
+def get_lapangan_list(request):
+    qs = Lapangan.objects.filter(is_active=True)
+    data = []
+    for lap in qs:
+        data.append({
+            "id": lap.id,
+            "nama_lapangan": lap.nama_lapangan,
+            "lokasi": lap.lokasi,
+            "harga_per_jam": int(lap.harga_per_jam),
+            "rating": float(lap.rating),
+            "thumbnail_url": _absolute_url(request, lap.foto_utama),
+        })
+    return JsonResponse(data, safe=False)
+
+def get_lapangan_detail(request, lap_id):
+    lap = get_object_or_404(Lapangan, pk=lap_id, is_active=True)
+    fasilitas_list = [f.strip() for f in lap.fasilitas.split(',') if f.strip() and f.strip() != '-']
+
+    gallery = [u for u in (
+        _absolute_url(request, lap.foto_utama),
+        _absolute_url(request, lap.foto_2),
+        _absolute_url(request, lap.foto_3),
+    ) if u]
+
+    reviews_qs = Review.objects.filter(field=lap).order_by('-created_at')[:10]
+    reviews = [{
+        "user": r.user.username,
+        "rating": float(r.rating),
+        "content": r.content,
+        "created_at": r.created_at.strftime("%Y-%m-%d")
+    } for r in reviews_qs]
+
+    data = {
+        "id": lap.id,
+        "nama_lapangan": lap.nama_lapangan,
+        "jenis_olahraga": lap.jenis_olahraga,
+        "lokasi": lap.lokasi,
+        "harga_per_jam": int(lap.harga_per_jam),
+        "rating": float(lap.rating),
+        "jumlah_ulasan": lap.jumlah_ulasan,
+        "deskripsi": lap.deskripsi,
+        "fasilitas": fasilitas_list,
+        "gallery_images": gallery,
+        "reviews": reviews,
+    }
+    return JsonResponse(data)
