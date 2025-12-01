@@ -739,7 +739,7 @@ def create_request_flutter(request):
     if request.method == 'POST':
         try:
             if not request.user.is_authenticated:
-                 return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
+                return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
 
             if request.content_type == 'application/json':
                 data = json.loads(request.body)
@@ -759,6 +759,114 @@ def create_request_flutter(request):
 
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+def create_post_flutter(request, pk):
+    """
+    Endpoint untuk membuat post baru di komunitas via Mobile
+    URL: /community/api/<pk>/post/create-flutter/
+    """
+    if request.method == 'POST':
+        try:
+            if not request.user.is_authenticated:
+                return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
+
+            community = get_object_or_404(Community, pk=pk)
+
+            # Cek apakah user adalah member
+            if not CommunityMember.objects.filter(community=community, user=request.user, is_active=True).exists():
+                return JsonResponse({'status': 'error', 'message': 'Anda harus menjadi anggota untuk membuat post.'}, status=403)
+
+            # Handle JSON or Form data
+            content = ''
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+                content = data.get('content', '').strip()
+            else:
+                content = request.POST.get('content', '').strip()
+
+            if not content:
+                return JsonResponse({'status': 'error', 'message': 'Konten post tidak boleh kosong.'}, status=400)
+
+            post = CommunityPost.objects.create(
+                community=community,
+                user=request.user,
+                content=content
+                # Image upload via Flutter might need special handling (base64), skipping for now or just basic handling if multipart
+            )
+
+            return JsonResponse({
+                'status': 'success', 
+                'message': 'Post berhasil dibuat!',
+                'post': {
+                    'pk': post.pk,
+                    'content': post.content,
+                    'created_at': post.created_at.strftime("%d %b %Y, %H:%M"),
+                    'user': {
+                        'username': post.user.username,
+                        'id': post.user.id
+                    }
+                }
+            })
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+def create_comment_flutter(request, post_id):
+    """
+    Endpoint untuk membuat komentar pada post via Mobile
+    URL: /community/api/post/<post_id>/comment-flutter/
+    """
+    if request.method == 'POST':
+        try:
+            if not request.user.is_authenticated:
+                return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
+
+            post = get_object_or_404(CommunityPost, pk=post_id)
+
+            # Cek apakah user adalah member komunitas
+            if not CommunityMember.objects.filter(community=post.community, user=request.user, is_active=True).exists():
+                return JsonResponse({'status': 'error', 'message': 'Anda harus menjadi anggota untuk berkomentar.'}, status=403)
+
+            # Handle JSON or Form data
+            content = ''
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+                content = data.get('content', '').strip()
+            else:
+                content = request.POST.get('content', '').strip()
+
+            if not content:
+                return JsonResponse({'status': 'error', 'message': 'Komentar tidak boleh kosong.'}, status=400)
+
+            comment = PostComment.objects.create(
+                post=post,
+                user=request.user,
+                content=content
+            )
+
+            return JsonResponse({
+                'status': 'success', 
+                'message': 'Komentar berhasil ditambahkan!',
+                'comment': {
+                    'pk': comment.pk,
+                    'content': comment.content,
+                    'created_at': comment.created_at.strftime("%d %b %Y, %H:%M"),
+                    'user': {
+                        'username': comment.user.username
+                    }
+                }
+            })
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
     return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
 
