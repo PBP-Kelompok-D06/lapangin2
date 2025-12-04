@@ -56,4 +56,7 @@ urlpatterns = [
     # API 7: Cancel Booking
     # POST /booking/api/booking/<booking_id>/cancel/
     path('api/booking/<int:booking_id>/cancel/', views.api_cancel_booking, name='api_cancel_booking'),
+
+
+    path('proxy-image/', views.proxy_image, name='proxy_image'),
 ]

@@ -1,6 +1,6 @@
 # lapangin2/booking/views.py
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse, HttpResponseBadRequest
+from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.contrib.auth.decorators import login_required
 from .models import SlotTersedia, Booking, Lapangan
 from datetime import date, timedelta
@@ -15,6 +15,7 @@ from django.db.models import Q
 from django.views.decorators.http import require_http_methods
 from django.core.serializers import serialize
 import json as json_lib
+import requests # type: ignore
 
 def show_booking_page(request):
     
@@ -319,6 +320,23 @@ def api_get_lapangan_detail(request, lapangan_id):
     try:
         lapangan = get_object_or_404(Lapangan, pk=lapangan_id, is_active=True)
         
+        # PRIORITAS FOTO: foto_utama dari upload > static image fallback
+        foto_utama_url = None
+        foto_2_url = None
+        foto_3_url = None
+        
+        if lapangan.foto_utama:
+            foto_utama_url = request.build_absolute_uri(lapangan.foto_utama.url)
+        else:
+            # Fallback ke static image
+            foto_utama_url = request.build_absolute_uri(f'/static/images/lapangan{lapangan.id}.png')
+        
+        if lapangan.foto_2:
+            foto_2_url = request.build_absolute_uri(lapangan.foto_2.url)
+        
+        if lapangan.foto_3:
+            foto_3_url = request.build_absolute_uri(lapangan.foto_3.url)
+        
         data = {
             'id': lapangan.id,
             'nama_lapangan': lapangan.nama_lapangan,
@@ -328,9 +346,9 @@ def api_get_lapangan_detail(request, lapangan_id):
             'fasilitas': lapangan.fasilitas,
             'rating': float(lapangan.rating),
             'jumlah_ulasan': lapangan.jumlah_ulasan,
-            'foto_utama': request.build_absolute_uri(lapangan.foto_utama.url) if lapangan.foto_utama else None,
-            'foto_2': request.build_absolute_uri(lapangan.foto_2.url) if lapangan.foto_2 else None,
-            'foto_3': request.build_absolute_uri(lapangan.foto_3.url) if lapangan.foto_3 else None,
+            'foto_utama': foto_utama_url,  # ✅ Selalu ada nilai (upload atau static)
+            'foto_2': foto_2_url,
+            'foto_3': foto_3_url,
             'deskripsi': lapangan.deskripsi,
             'pengelola': {
                 'username': lapangan.pengelola.user.username if lapangan.pengelola else None,
@@ -727,3 +745,21 @@ def api_cancel_booking(request, booking_id):
             'status': 'error',
             'message': str(e)
         }, status=500)
+    
+def proxy_image(request):
+    image_url = request.GET.get('url')
+    if not image_url:
+        return HttpResponse('No URL provided', status=400)
+    
+    try:
+        # Fetch image from external source
+        response = requests.get(image_url, timeout=10)
+        response.raise_for_status()
+        
+        # Return the image with proper content type
+        return HttpResponse(
+            response.content,
+            content_type=response.headers.get('Content-Type', 'image/jpeg')
+        )
+    except requests.RequestException as e: 
+        return HttpResponse(f'Error fetching image: {str(e)}', status=500)
