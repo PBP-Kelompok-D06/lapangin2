@@ -5,7 +5,7 @@ from booking.models import Lapangan
 from django.templatetags.static import static
 from django.contrib.staticfiles.finders import find
 import os
-import requests
+import requests # type: ignore
 from django.http import JsonResponse
 
 

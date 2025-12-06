@@ -1,3 +1,4 @@
+# lapangin2/booking/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponseBadRequest
 from django.contrib.auth.decorators import login_required
@@ -11,6 +12,9 @@ from django.utils import timezone # Untuk perbandingan timezone-aware
 import os
 from django.conf import settings
 from django.db.models import Q
+from django.views.decorators.http import require_http_methods
+from django.core.serializers import serialize
+import json as json_lib
 
 def show_booking_page(request):
     
@@ -264,3 +268,429 @@ def my_bookings(request):
         'show_navbar': True,
     }
     return render(request, 'my_bookings.html', context)
+# ============================================================
+# API ENDPOINTS UNTUK FLUTTER
+# ============================================================
+
+# API 1: Get All Lapangan (untuk dropdown/list)
+@require_http_methods(["GET"])
+def api_get_lapangan_list(request):
+    """
+    Endpoint untuk mengambil daftar semua lapangan
+    GET /booking/api/lapangan/
+    """
+    try:
+        lapangan_list = Lapangan.objects.filter(is_active=True).order_by('nama_lapangan')
+        
+        data = []
+        for lapangan in lapangan_list:
+            data.append({
+                'id': lapangan.id,
+                'nama_lapangan': lapangan.nama_lapangan,
+                'jenis_olahraga': lapangan.jenis_olahraga,
+                'lokasi': lapangan.lokasi,
+                'harga_per_jam': float(lapangan.harga_per_jam),
+                'fasilitas': lapangan.fasilitas,
+                'rating': float(lapangan.rating),
+                'jumlah_ulasan': lapangan.jumlah_ulasan,
+                'foto_utama': request.build_absolute_uri(lapangan.foto_utama.url) if lapangan.foto_utama else None,
+                'deskripsi': lapangan.deskripsi,
+            })
+        
+        return JsonResponse({
+            'status': 'success',
+            'data': data
+        }, status=200)
+    
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+# API 2: Get Lapangan Detail
+@require_http_methods(["GET"])
+def api_get_lapangan_detail(request, lapangan_id):
+    """
+    Endpoint untuk mengambil detail lapangan tertentu
+    GET /booking/api/lapangan/<id>/
+    """
+    try:
+        lapangan = get_object_or_404(Lapangan, pk=lapangan_id, is_active=True)
+        
+        data = {
+            'id': lapangan.id,
+            'nama_lapangan': lapangan.nama_lapangan,
+            'jenis_olahraga': lapangan.jenis_olahraga,
+            'lokasi': lapangan.lokasi,
+            'harga_per_jam': float(lapangan.harga_per_jam),
+            'fasilitas': lapangan.fasilitas,
+            'rating': float(lapangan.rating),
+            'jumlah_ulasan': lapangan.jumlah_ulasan,
+            'foto_utama': request.build_absolute_uri(lapangan.foto_utama.url) if lapangan.foto_utama else None,
+            'foto_2': request.build_absolute_uri(lapangan.foto_2.url) if lapangan.foto_2 else None,
+            'foto_3': request.build_absolute_uri(lapangan.foto_3.url) if lapangan.foto_3 else None,
+            'deskripsi': lapangan.deskripsi,
+            'pengelola': {
+                'username': lapangan.pengelola.user.username if lapangan.pengelola else None,
+                'nomor_whatsapp': lapangan.pengelola.nomor_whatsapp if lapangan.pengelola else None,
+            } if lapangan.pengelola else None
+        }
+        
+        return JsonResponse({
+            'status': 'success',
+            'data': data
+        }, status=200)
+    
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+# API 3: Get Available Slots
+@require_http_methods(["GET"])
+def api_get_available_slots(request, lapangan_id):
+    """
+    Endpoint untuk mengambil slot yang tersedia untuk lapangan tertentu
+    GET /booking/api/slots/<lapangan_id>/?date=YYYY-MM-DD&days=7
+    
+    Query Parameters:
+    - date: tanggal mulai (default: hari ini)
+    - days: jumlah hari yang ingin ditampilkan (default: 7)
+    """
+    try:
+        lapangan = get_object_or_404(Lapangan, pk=lapangan_id, is_active=True)
+        
+        # Parse query parameters
+        date_str = request.GET.get('date')
+        days = int(request.GET.get('days', 7))
+        
+        # Tentukan tanggal mulai
+        if date_str:
+            try:
+                start_date = date.fromisoformat(date_str)
+            except ValueError:
+                start_date = date.today()
+        else:
+            start_date = date.today()
+        
+        # Generate list tanggal
+        date_list = [start_date + timedelta(days=i) for i in range(days)]
+        
+        # Ambil slots
+        slots = SlotTersedia.objects.select_related('pending_booking').filter(
+            lapangan=lapangan,
+            tanggal__in=date_list,
+        ).order_by('tanggal', 'jam_mulai')
+        
+        # Format data berdasarkan tanggal
+        slots_by_date = {}
+        for slot_date in date_list:
+            date_key = slot_date.strftime('%Y-%m-%d')
+            slots_by_date[date_key] = []
+            
+            day_slots = slots.filter(tanggal=slot_date)
+            for slot in day_slots:
+                # Tentukan status
+                status = 'AVAILABLE'
+                if not slot.is_available:
+                    status = 'BOOKED'
+                elif slot.pending_booking is not None:
+                    status = 'PENDING'
+                
+                slots_by_date[date_key].append({
+                    'id': slot.id,
+                    'jam_mulai': slot.jam_mulai.strftime('%H:%M'),
+                    'jam_akhir': slot.jam_akhir.strftime('%H:%M'),
+                    'status': status,
+                    'harga': float(lapangan.harga_per_jam)
+                })
+        
+        return JsonResponse({
+            'status': 'success',
+            'data': {
+                'lapangan_id': lapangan.id,
+                'lapangan_nama': lapangan.nama_lapangan,
+                'harga_per_jam': float(lapangan.harga_per_jam),
+                'slots_by_date': slots_by_date
+            }
+        }, status=200)
+    
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+# API 4: Create Booking
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_create_booking(request):
+    """
+    Endpoint untuk membuat booking baru
+    POST /booking/api/create/
+    
+    Request Body (JSON):
+    {
+        "slot_id": 123
+    }
+    
+    Headers:
+    - Cookie dengan session Django (user harus sudah login)
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Anda harus login untuk melakukan booking.'
+        }, status=401)
+    
+    try:
+        data = json_lib.loads(request.body)
+        slot_id = data.get('slot_id')
+        
+        if not slot_id:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'slot_id diperlukan.'
+            }, status=400)
+        
+        slot = get_object_or_404(SlotTersedia, pk=slot_id)
+        
+        # Cek apakah slot masih available
+        if not slot.is_available:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Slot sudah dibooking oleh orang lain.'
+            }, status=400)
+        
+        if slot.pending_booking is not None:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Slot sedang dalam proses booking oleh orang lain.'
+            }, status=400)
+        
+        # Hitung total pembayaran
+        raw_price = slot.lapangan.harga_per_jam
+        total_bayar = raw_price if raw_price is not None else 0
+        
+        # Buat booking
+        booking = Booking.objects.create(
+            user=request.user,
+            slot=slot,
+            tanggal_booking=timezone.now(),
+            total_bayar=total_bayar,
+            status_pembayaran='PENDING'
+        )
+        
+        # Update slot
+        slot.pending_booking = booking
+        slot.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Booking berhasil dibuat.',
+            'data': {
+                'booking_id': booking.id,
+                'total_bayar': float(booking.total_bayar),
+                'status_pembayaran': booking.status_pembayaran
+            }
+        }, status=201)
+    
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+# API 5: Get Booking Detail
+@require_http_methods(["GET"])
+def api_get_booking_detail(request, booking_id):
+    """
+    Endpoint untuk mengambil detail booking
+    GET /booking/api/booking/<booking_id>/
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Anda harus login.'
+        }, status=401)
+    
+    try:
+        booking = get_object_or_404(Booking, pk=booking_id)
+        
+        # Validasi kepemilikan
+        if booking.user != request.user:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Anda tidak memiliki akses ke booking ini.'
+            }, status=403)
+        
+        # Cek timeout untuk PENDING
+        timeout_duration = timedelta(minutes=5)
+        if booking.status_pembayaran == 'PENDING':
+            timeout_time = booking.tanggal_booking + timeout_duration
+            
+            if timezone.now() > timeout_time:
+                # Batalkan booking otomatis
+                slot_terkait = booking.slot
+                if slot_terkait and slot_terkait.pending_booking == booking:
+                    slot_terkait.pending_booking = None
+                    slot_terkait.save()
+                booking.status_pembayaran = 'CANCELLED'
+                booking.save()
+            
+            # Hitung sisa waktu
+            time_remaining_seconds = max(0, int((timeout_time - timezone.now()).total_seconds()))
+        else:
+            time_remaining_seconds = None
+        
+        # Ambil data pemilik
+        pemilik = booking.slot.lapangan.pengelola
+        
+        data = {
+            'id': booking.id,
+            'lapangan': {
+                'id': booking.slot.lapangan.id,
+                'nama': booking.slot.lapangan.nama_lapangan,
+                'lokasi': booking.slot.lapangan.lokasi,
+                'foto_utama': request.build_absolute_uri(booking.slot.lapangan.foto_utama.url) if booking.slot.lapangan.foto_utama else None,
+            },
+            'slot': {
+                'tanggal': booking.slot.tanggal.strftime('%Y-%m-%d'),
+                'jam_mulai': booking.slot.jam_mulai.strftime('%H:%M'),
+                'jam_akhir': booking.slot.jam_akhir.strftime('%H:%M'),
+            },
+            'tanggal_booking': booking.tanggal_booking.strftime('%Y-%m-%d %H:%M:%S'),
+            'total_bayar': float(booking.total_bayar),
+            'status_pembayaran': booking.status_pembayaran,
+            'status_pembayaran_display': booking.get_status_pembayaran_display(),
+            'time_remaining_seconds': time_remaining_seconds,
+            'pemilik': {
+                'nomor_rekening': pemilik.nomor_rekening if pemilik and hasattr(pemilik, 'nomor_rekening') else None,
+                'nomor_whatsapp': pemilik.nomor_whatsapp if pemilik and hasattr(pemilik, 'nomor_whatsapp') else None,
+            }
+        }
+        
+        return JsonResponse({
+            'status': 'success',
+            'data': data
+        }, status=200)
+    
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+# API 6: Get My Bookings (List semua booking user)
+@require_http_methods(["GET"])
+def api_get_my_bookings(request):
+    """
+    Endpoint untuk mengambil semua booking milik user yang login
+    GET /booking/api/my-bookings/
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Anda harus login.'
+        }, status=401)
+    
+    try:
+        bookings = (
+            Booking.objects
+            .select_related('slot__lapangan')
+            .filter(user=request.user)
+            .filter(Q(status_pembayaran='PAID') | Q(slot__is_available=False))
+            .order_by('-tanggal_booking')
+        )
+        
+        data = []
+        for booking in bookings:
+            data.append({
+                'id': booking.id,
+                'lapangan': {
+                    'id': booking.slot.lapangan.id,
+                    'nama': booking.slot.lapangan.nama_lapangan,
+                    'lokasi': booking.slot.lapangan.lokasi,
+                    'foto_utama': request.build_absolute_uri(booking.slot.lapangan.foto_utama.url) if booking.slot.lapangan.foto_utama else None,
+                },
+                'slot': {
+                    'tanggal': booking.slot.tanggal.strftime('%Y-%m-%d'),
+                    'jam_mulai': booking.slot.jam_mulai.strftime('%H:%M'),
+                    'jam_akhir': booking.slot.jam_akhir.strftime('%H:%M'),
+                },
+                'tanggal_booking': booking.tanggal_booking.strftime('%Y-%m-%d %H:%M:%S'),
+                'total_bayar': float(booking.total_bayar),
+                'status_pembayaran': booking.status_pembayaran,
+                'status_pembayaran_display': booking.get_status_pembayaran_display(),
+            })
+        
+        return JsonResponse({
+            'status': 'success',
+            'data': data
+        }, status=200)
+    
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+# API 7: Cancel Booking (Opsional - jika diperlukan)
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_cancel_booking(request, booking_id):
+    """
+    Endpoint untuk membatalkan booking (hanya jika masih PENDING)
+    POST /booking/api/booking/<booking_id>/cancel/
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Anda harus login.'
+        }, status=401)
+    
+    try:
+        booking = get_object_or_404(Booking, pk=booking_id)
+        
+        # Validasi kepemilikan
+        if booking.user != request.user:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Anda tidak memiliki akses ke booking ini.'
+            }, status=403)
+        
+        # Hanya bisa cancel jika masih PENDING
+        if booking.status_pembayaran != 'PENDING':
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Booking dengan status {booking.status_pembayaran} tidak dapat dibatalkan.'
+            }, status=400)
+        
+        # Update slot
+        slot = booking.slot
+        if slot.pending_booking == booking:
+            slot.pending_booking = None
+            slot.save()
+        
+        # Update booking
+        booking.status_pembayaran = 'CANCELLED'
+        booking.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Booking berhasil dibatalkan.'
+        }, status=200)
+    
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)

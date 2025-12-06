@@ -85,6 +85,7 @@ def review_list_json(request, field_id):
         {
             "id": review.id,
             "field_id": field_id,
+            "fieldName": field.nama_lapangan,
             "user": review.user.user.username,
             "content": review.content,
             "rating": review.rating,
@@ -164,7 +165,13 @@ def review_statistics(request, field_id):
 
 @csrf_exempt
 def review_edit(request, review_id):
-    if request.method == "POST" and request.headers.get('x-requested-with') == 'XMLHttpRequest':
+    if request.method == "POST":
+        print("=" * 50)
+        print("Content-Type:", request.content_type)
+        print("Request Body:", request.body)
+        print("Request POST:", request.POST)
+        print("=" * 50)
+        
         try:
             review_id = int(review_id)
         except ValueError:
@@ -175,12 +182,17 @@ def review_edit(request, review_id):
         except Review.DoesNotExist:
             return JsonResponse({"success": False, "error": "Review tidak ditemukan"}, status=404)
 
-        try:
-            data = json.loads(request.body)
-            new_content = data.get('content', '').strip()
-            new_rating = data.get('rating')
-        except json.JSONDecodeError:
-            return JsonResponse({"success": False, "error": "Data tidak valid"}, status=400)
+        new_content = request.POST.get('content', '').strip()
+        new_rating = request.POST.get('rating')
+        
+        if not new_content and not new_rating:
+            try:
+                data = json.loads(request.body)
+                new_content = data.get('content', '').strip()
+                new_rating = data.get('rating')
+            except (json.JSONDecodeError, ValueError) as e:
+                print(f"JSON Parse Error: {e}")
+                return JsonResponse({"success": False, "error": f"Data tidak valid: {str(e)}"}, status=400)
 
         if not new_content:
             return JsonResponse({"success": False, "error": "Konten tidak boleh kosong"}, status=400)
@@ -202,6 +214,7 @@ def review_edit(request, review_id):
 
         return JsonResponse({
             "success": True,
+            "message": "Review berhasil diupdate",
             "updated": {
                 "content": review.content,
                 "rating": review.rating,
@@ -258,30 +271,45 @@ def add_review(request, field_id):
     return JsonResponse({"success": False, "error": "Invalid method"}, status=405)
 
 
-@csrf_exempt 
+@csrf_exempt
 def add_review_api(request, field_id):
-    if request.method == 'POST':
-        if not request.user.is_authenticated:
-            return JsonResponse({"success": False, "message": "Harus login dulu!"}, status=401)
-            
-        try:
-            data = json.loads(request.body)
-            field = Field.objects.get(id=field_id)
-            profile = get_object_or_404(Profile, user=request.user)
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "Method harus POST"}, status=405)
 
-            # Buat Review Baru
-            Review.objects.create(
-                user=profile,
-                field=field,
-                rating=data.get('rating'),
-                content=data.get('content')
-            )
-            
-            # Update Rating Rata-rata Lapangan
-            field.update_rating() 
+    if not request.user.is_authenticated:
+        return JsonResponse({"success": False, "message": "Harus login dulu!"}, status=401)
 
-            return JsonResponse({"success": True, "message": "Review berhasil!"})
-        except Exception as e:
-            return JsonResponse({"success": False, "message": str(e)}, status=400)
-            
-    return JsonResponse({"success": False, "message": "Method harus POST"}, status=405)
+    try:
+        data = json.loads(request.body)
+
+        field = get_object_or_404(Field, id=field_id)
+        profile = get_object_or_404(Profile, user=request.user)
+
+        review = Review.objects.create(
+            user=profile,
+            field=field,
+            rating=data.get("rating"),
+            content=data.get("content")
+        )
+
+        field.update_rating()
+
+        created = review.created_at.strftime("%d %b %Y %H:%M")
+
+        return JsonResponse({
+            "success": True,
+            "message": "Review berhasil ditambahkan!",
+            "review": {
+                "id": review.id,
+                "field_id": review.field.id,               
+                "fieldName": review.field.nama_lapangan,
+                "user": request.user.username,
+                "content": review.content,
+                "rating": int(review.rating),
+                "created_at": created,
+                "is_owner": True,
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({"success": False, "message": str(e)}, status=400)
