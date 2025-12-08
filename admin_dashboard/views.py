@@ -17,6 +17,10 @@ from booking.models import Booking, SlotTersedia, Lapangan
 from community.models import Community, CommunityRequest 
 from datetime import date, time, timedelta
 
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import authenticate
+import json
+
 # Decorator untuk cek role PEMILIK
 def is_pemilik(user):
     """Cek apakah user adalah PEMILIK lapangan"""
@@ -680,3 +684,210 @@ def booking_session_delete(request, pk):
         'pending_bookings': get_pending_bookings_count(request.user),
     }
     return render(request, 'admin_dashboard/booking_session_confirm_delete.html', context)
+
+# ============================================================
+# API 1: Admin Login
+# ============================================================
+@csrf_exempt
+def api_admin_login(request):
+    if request.method != 'POST':
+        return JsonResponse({'status': False, 'message': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        username = data.get('username')
+        password = data.get('password')
+        
+        user = authenticate(username=username, password=password)
+        
+        if user is None:
+            return JsonResponse({'status': False, 'message': 'Invalid credentials'}, status=401)
+        
+        # Cek apakah user adalah PEMILIK
+        if not hasattr(user, 'profile') or user.profile.role != 'PEMILIK':
+            return JsonResponse({'status': False, 'message': 'Unauthorized. Only field owners allowed.'}, status=403)
+        
+        # Set session
+        from django.contrib.auth import login
+        login(request, user)
+        
+        return JsonResponse({
+            'status': True,
+            'message': 'Login successful',
+            'data': {
+                'username': user.username,
+                'role': user.profile.role,
+                'nomor_whatsapp': user.profile.nomor_whatsapp,
+                'nomor_rekening': user.profile.nomor_rekening,
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({'status': False, 'message': str(e)}, status=500)
+
+
+# ============================================================
+# API 2: Dashboard Stats
+# ============================================================
+@pemilik_required
+def api_dashboard_stats(request):
+    try:
+        total_lapangan = Lapangan.objects.filter(pengelola=request.user.profile).count()
+        pending_bookings = Booking.objects.filter(
+            slot__lapangan__pengelola=request.user.profile,
+            status_pembayaran='PENDING'
+        ).count()
+        total_komunitas = Community.objects.filter(created_by=request.user).count()
+        
+        return JsonResponse({
+            'status': 'success',
+            'data': {
+                'total_lapangan': total_lapangan,
+                'pending_bookings': pending_bookings,
+                'total_komunitas': total_komunitas,
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+# ============================================================
+# API 3: Get Pending Bookings
+# ============================================================
+@pemilik_required
+def api_pending_bookings(request):
+    try:
+        bookings = Booking.objects.filter(
+            slot__lapangan__pengelola=request.user.profile,
+            status_pembayaran='PENDING'
+        ).select_related('user', 'slot', 'slot__lapangan').order_by('-tanggal_booking')
+        
+        data = []
+        for booking in bookings:
+            data.append({
+                'id': booking.id,
+                'user': {
+                    'username': booking.user.username,
+                    'email': booking.user.email,
+                },
+                'lapangan': {
+                    'id': booking.slot.lapangan.id,
+                    'nama': booking.slot.lapangan.nama_lapangan,
+                    'jenis_olahraga': booking.slot.lapangan.jenis_olahraga,
+                    'lokasi': booking.slot.lapangan.lokasi,
+                },
+                'slot': {
+                    'tanggal': booking.slot.tanggal.strftime('%Y-%m-%d'),
+                    'jam_mulai': booking.slot.jam_mulai.strftime('%H:%M'),
+                    'jam_akhir': booking.slot.jam_akhir.strftime('%H:%M'),
+                },
+                'total_bayar': float(booking.total_bayar),
+                'tanggal_booking': booking.tanggal_booking.strftime('%Y-%m-%d %H:%M:%S'),
+            })
+        
+        return JsonResponse({'status': 'success', 'data': data})
+        
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+# ============================================================
+# API 4: Approve Booking
+# ============================================================
+@csrf_exempt
+@pemilik_required
+def api_approve_booking(request, booking_id):
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+    
+    try:
+        booking = get_object_or_404(
+            Booking,
+            pk=booking_id,
+            slot__lapangan__pengelola=request.user.profile,
+            status_pembayaran='PENDING'
+        )
+        
+        if booking.status_pembayaran != 'PENDING':
+            return JsonResponse({'status': 'error', 'message': 'Booking already processed'}, status=400)
+        
+        booking.status_pembayaran = 'PAID'
+        booking.save()
+        
+        slot = booking.slot
+        slot.is_available = False
+        slot.pending_booking = None
+        slot.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Booking #{booking.id} approved successfully'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+# ============================================================
+# API 5: Reject Booking
+# ============================================================
+@csrf_exempt
+@pemilik_required
+def api_reject_booking(request, booking_id):
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+    
+    try:
+        booking = get_object_or_404(
+            Booking,
+            pk=booking_id,
+            slot__lapangan__pengelola=request.user.profile,
+            status_pembayaran='PENDING'
+        )
+        
+        if booking.status_pembayaran != 'PENDING':
+            return JsonResponse({'status': 'error', 'message': 'Booking already processed'}, status=400)
+        
+        booking.status_pembayaran = 'CANCELLED'
+        booking.save()
+        
+        slot = booking.slot
+        slot.is_available = True
+        slot.pending_booking = None
+        slot.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Booking #{booking.id} rejected successfully'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+# ============================================================
+# API 6: Get Lapangan List
+# ============================================================
+@pemilik_required
+def api_lapangan_list(request):
+    try:
+        lapangan_list = Lapangan.objects.filter(
+            pengelola=request.user.profile
+        ).order_by('nama_lapangan')
+        
+        data = []
+        for lapangan in lapangan_list:
+            data.append({
+                'id': lapangan.id,
+                'nama_lapangan': lapangan.nama_lapangan,
+                'jenis_olahraga': lapangan.jenis_olahraga,
+                'lokasi': lapangan.lokasi,
+                'harga_per_jam': float(lapangan.harga_per_jam),
+                'rating': float(lapangan.rating),
+                'jumlah_ulasan': lapangan.jumlah_ulasan,
+            })
+        
+        return JsonResponse({'status': 'success', 'data': data})
+        
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
