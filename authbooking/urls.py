@@ -13,5 +13,5 @@ urlpatterns = [
     # flutter
     path('login-flutter/', views.login_flutter, name='login-flutter'),
     path('register-flutter/', views.register_flutter, name='register-flutter'),
-    path('logout-flutter', views.logout_flutter, name='logout-flutter'),
+    path('logout-flutter/', views.logout_flutter, name='logout-flutter'),
 ]
