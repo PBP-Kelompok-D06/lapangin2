@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Avg
 
+
 def review_list(request, field_id):
     field = get_object_or_404(Field, id=field_id)
     
@@ -33,7 +34,7 @@ def review_list(request, field_id):
         review.is_owner = review.user.user == request.user
         review.id = review.id
 
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' :
         reviews_data = [
             {
                 "id": review.id,
@@ -54,6 +55,50 @@ def review_list(request, field_id):
         'field': field,
         'show_navbar': True
     })
+
+def review_list_json(request, field_id):
+    field = get_object_or_404(Field, id=field_id)
+    
+    filter_rating = request.GET.get('filter', 'all')
+    
+    reviews = Review.objects.filter(field=field)
+    
+    if filter_rating == 'terbaru':
+        reviews = reviews.order_by('-created_at')
+    elif filter_rating != 'all':
+        try:
+            rating_value = int(filter_rating)
+            if 1 <= rating_value <= 5:
+                reviews = reviews.filter(rating=rating_value).order_by('-created_at')
+            else:
+                reviews = reviews.order_by('-created_at')
+        except ValueError:
+            reviews = reviews.order_by('-created_at')
+    else:
+        reviews = reviews.order_by('-created_at')
+
+    for review in reviews:
+        review.is_owner = review.user.user == request.user
+        review.id = review.id
+
+    reviews_data = [
+        {
+            "id": review.id,
+            "field_id": field_id,
+            "fieldName": field.nama_lapangan,
+            "user": review.user.user.username,
+            "content": review.content,
+            "rating": review.rating,
+            "created_at": review.created_at.strftime("%d %b %Y %H:%M"),
+            "is_owner": review.user.user == request.user
+        }
+        for review in reviews
+    ]
+    
+
+    return JsonResponse(reviews_data, safe=False)
+
+
 
 def review_list_in_gallery(request, field_id):
     field = get_object_or_404(Field, id=field_id)
@@ -120,7 +165,13 @@ def review_statistics(request, field_id):
 
 @csrf_exempt
 def review_edit(request, review_id):
-    if request.method == "POST" and request.headers.get('x-requested-with') == 'XMLHttpRequest':
+    if request.method == "POST":
+        print("=" * 50)
+        print("Content-Type:", request.content_type)
+        print("Request Body:", request.body)
+        print("Request POST:", request.POST)
+        print("=" * 50)
+        
         try:
             review_id = int(review_id)
         except ValueError:
@@ -131,12 +182,17 @@ def review_edit(request, review_id):
         except Review.DoesNotExist:
             return JsonResponse({"success": False, "error": "Review tidak ditemukan"}, status=404)
 
-        try:
-            data = json.loads(request.body)
-            new_content = data.get('content', '').strip()
-            new_rating = data.get('rating')
-        except json.JSONDecodeError:
-            return JsonResponse({"success": False, "error": "Data tidak valid"}, status=400)
+        new_content = request.POST.get('content', '').strip()
+        new_rating = request.POST.get('rating')
+        
+        if not new_content and not new_rating:
+            try:
+                data = json.loads(request.body)
+                new_content = data.get('content', '').strip()
+                new_rating = data.get('rating')
+            except (json.JSONDecodeError, ValueError) as e:
+                print(f"JSON Parse Error: {e}")
+                return JsonResponse({"success": False, "error": f"Data tidak valid: {str(e)}"}, status=400)
 
         if not new_content:
             return JsonResponse({"success": False, "error": "Konten tidak boleh kosong"}, status=400)
@@ -158,6 +214,7 @@ def review_edit(request, review_id):
 
         return JsonResponse({
             "success": True,
+            "message": "Review berhasil diupdate",
             "updated": {
                 "content": review.content,
                 "rating": review.rating,
@@ -213,44 +270,46 @@ def add_review(request, field_id):
         })
     return JsonResponse({"success": False, "error": "Invalid method"}, status=405)
 
-def get_review_detail(request, review_id):
-    review = get_object_or_404(Review, id=review_id)
-    data = {
-        "id": review.id,
-        "user": review.user.user.username, # Review -> Profile -> User -> Username
-        "content": review.content,
-        "rating": review.rating,
-        "created_at": review.created_at.strftime("%d %b %Y %H:%M"),
-        "is_owner": review.user.user == request.user
-    }
-    
-    # 3. Return response
-    return JsonResponse(data)
 
-@csrf_exempt 
+@csrf_exempt
 def add_review_api(request, field_id):
-    if request.method == 'POST':
-        if not request.user.is_authenticated:
-            return JsonResponse({"success": False, "message": "Harus login dulu!"}, status=401)
-            
-        try:
-            data = json.loads(request.body)
-            field = Field.objects.get(id=field_id)
-            profile = get_object_or_404(Profile, user=request.user)
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "Method harus POST"}, status=405)
 
-            # Buat Review Baru
-            Review.objects.create(
-                user=profile,
-                field=field,
-                rating=data.get('rating'),
-                content=data.get('content')
-            )
-            
-            # Update Rating Rata-rata Lapangan
-            field.update_rating() 
+    if not request.user.is_authenticated:
+        return JsonResponse({"success": False, "message": "Harus login dulu!"}, status=401)
 
-            return JsonResponse({"success": True, "message": "Review berhasil!"})
-        except Exception as e:
-            return JsonResponse({"success": False, "message": str(e)}, status=400)
-            
-    return JsonResponse({"success": False, "message": "Method harus POST"}, status=405)
+    try:
+        data = json.loads(request.body)
+
+        field = get_object_or_404(Field, id=field_id)
+        profile = get_object_or_404(Profile, user=request.user)
+
+        review = Review.objects.create(
+            user=profile,
+            field=field,
+            rating=data.get("rating"),
+            content=data.get("content")
+        )
+
+        field.update_rating()
+
+        created = review.created_at.strftime("%d %b %Y %H:%M")
+
+        return JsonResponse({
+            "success": True,
+            "message": "Review berhasil ditambahkan!",
+            "review": {
+                "id": review.id,
+                "field_id": review.field.id,               
+                "fieldName": review.field.nama_lapangan,
+                "user": request.user.username,
+                "content": review.content,
+                "rating": int(review.rating),
+                "created_at": created,
+                "is_owner": True,
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({"success": False, "message": str(e)}, status=400)

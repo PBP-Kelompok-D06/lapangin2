@@ -112,9 +112,6 @@ def logout_user(request):
 
 
 @csrf_exempt
-# lapangin2/authbooking/views.py
-
-@csrf_exempt
 def login_flutter(request):
     username = request.POST['username']
     password = request.POST['password']
@@ -141,9 +138,9 @@ def login_flutter(request):
                 "username": user.username,
                 "status": True,
                 "message": "Login successful!",
-                "role": role,  # ⭐ 
-                "nomor_whatsapp": nomor_whatsapp,  # Optional: untuk PEMILIK
-                "nomor_rekening": nomor_rekening,   # Optional: untuk PEMILIK
+                "role": role,
+                "nomor_whatsapp": nomor_whatsapp,
+                "nomor_rekening": nomor_rekening,
             }, status=200)
         else:
             return JsonResponse({
@@ -155,6 +152,7 @@ def login_flutter(request):
             "status": False,
             "message": "Login failed, please check your username or password."
         }, status=401)
+    
 
 
 @csrf_exempt
