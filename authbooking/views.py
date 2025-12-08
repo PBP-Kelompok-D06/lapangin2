@@ -112,26 +112,44 @@ def logout_user(request):
 
 
 @csrf_exempt
+# lapangin2/authbooking/views.py
+
+@csrf_exempt
 def login_flutter(request):
     username = request.POST['username']
     password = request.POST['password']
     user = authenticate(username=username, password=password)
+    
     if user is not None:
         if user.is_active:
             auth_login(request, user)
-            # Login status successful.
+            
+            # Ambil role dari Profile
+            try:
+                profile = Profile.objects.get(user=user)
+                role = profile.role  # 'PEMILIK' atau 'PENYEWA'
+                nomor_whatsapp = profile.nomor_whatsapp if role == 'PEMILIK' else None
+                nomor_rekening = profile.nomor_rekening if role == 'PEMILIK' else None
+            except Profile.DoesNotExist:
+                # Jika profile tidak ada, default ke PENYEWA
+                role = 'PENYEWA'
+                nomor_whatsapp = None
+                nomor_rekening = None
+            
+            # Return dengan field role
             return JsonResponse({
                 "username": user.username,
                 "status": True,
-                "message": "Login successful!"
-                # Add other data if you want to send data to Flutter.
+                "message": "Login successful!",
+                "role": role,  # ⭐ 
+                "nomor_whatsapp": nomor_whatsapp,  # Optional: untuk PEMILIK
+                "nomor_rekening": nomor_rekening,   # Optional: untuk PEMILIK
             }, status=200)
         else:
             return JsonResponse({
                 "status": False,
                 "message": "Login failed, account is disabled."
             }, status=401)
-
     else:
         return JsonResponse({
             "status": False,
