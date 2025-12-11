@@ -522,24 +522,39 @@ def show_json_all_communities(request):
 
 def show_json_community_posts(request, pk):
     """
-    GET: Mengembalikan list post dalam satu komunitas.
+    GET: Mengembalikan list post dalam satu komunitas BESERTA KOMENTARNYA.
     URL: /community/api/community/<pk>/posts/
     """
     community = get_object_or_404(Community, pk=pk)
-    posts = CommunityPost.objects.filter(community=community).select_related('user').order_by('-created_at')
+    
+    # Tambahkan prefetch_related('comments__user') agar query database efisien
+    posts = CommunityPost.objects.filter(community=community)\
+        .select_related('user')\
+        .prefetch_related('comments__user')\
+        .order_by('-created_at')
     
     data = []
     for post in posts:
+        # --- 1. AMBIL LIST KOMENTAR ---
+        comments_data = []
+        for comment in post.comments.all().order_by('created_at'):
+            comments_data.append({
+                'pk': comment.pk,
+                'username': comment.user.username, 
+                'content': comment.content,
+                'created_at': comment.created_at.strftime("%Y-%m-%d %H:%M")
+            })
+        
+        # --- 2. MASUKKAN KE DATA POST ---
         data.append({
             'pk': post.pk,
-            'user': {
-                'username': post.user.username,
-                'id': post.user.id
-            },
+            # Ubah struktur user jadi flat string biar gampang di Flutter
+            'username': post.user.username, 
             'content': post.content,
             'image_url': post.image.url if post.image else None,
             'created_at': post.created_at.strftime("%Y-%m-%d %H:%M"),
-            'comments_count': post.comments.count()
+            'comments_count': post.comments.count(),
+            'comments': comments_data, # <--- INI WAJIB ADA
         })
         
     return JsonResponse({
@@ -871,3 +886,33 @@ def create_comment_flutter(request, post_id):
 
     return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
 
+@csrf_exempt
+def check_community_membership(request, pk):
+    """
+    Endpoint untuk mengecek apakah user sudah menjadi member komunitas ini.
+    URL: /community/api/<pk>/check-membership/
+    """
+    if request.method == 'GET':
+        try:
+            if not request.user.is_authenticated:
+                return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
+
+            community = get_object_or_404(Community, pk=pk)
+            
+            # Cek status member
+            is_member = CommunityMember.objects.filter(
+                community=community, 
+                user=request.user, 
+                is_active=True
+            ).exists()
+
+            return JsonResponse({
+                'status': 'success', 
+                'is_joined': is_member,
+                'member_count': community.member_count # Kirim juga jumlah member terbaru
+            })
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)

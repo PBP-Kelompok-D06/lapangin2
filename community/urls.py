@@ -66,6 +66,5 @@ urlpatterns = [
     path('api/<int:pk>/leave-flutter/', views.leave_community_flutter, name='api_leave_flutter'),
     path('api/post/<int:pk>/delete-flutter/', views.delete_post_flutter, name='api_post_delete_flutter'),
     path('api/request-flutter/', views.create_request_flutter, name='api_request_flutter'),
-
-    
+    path('api/<int:pk>/check-membership/', views.check_community_membership, name='api_check_membership'),
 ]
