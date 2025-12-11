@@ -1,9 +1,29 @@
 # gallery/views.py
 import re
 from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
+import requests
 from booking.models import Lapangan
 from review.models import Review
+
+def proxy_image(request):
+    image_url = request.GET.get('url')
+    if not image_url:
+        return HttpResponse('No URL provided', status=400)
+    
+    try:
+        # Fetch image from external source
+        response = requests.get(image_url, timeout=10)
+        response.raise_for_status()
+        
+        # Return the image with proper content type
+        return HttpResponse(
+            response.content,
+            content_type=response.headers.get('Content-Type', 'image/jpeg')
+        )
+    except requests.RequestException as e:
+        return HttpResponse(f'Error fetching image: {str(e)}', status=500)
+
 
 def show_gallery(request, lap_id):
     lapangan = get_object_or_404(Lapangan, pk=lap_id)
@@ -68,7 +88,7 @@ def get_lapangan_list(request):
             "location": lap.lokasi,
             "price": int(lap.harga_per_jam),
             "rating": float(lap.rating),
-            "image": _absolute_url(request, lap.foto_utama),
+            "image": f'static/images/lapangan{lap.id}.png',
             "review_count": lap.jumlah_ulasan,
         })
     return JsonResponse(data, safe=False)
@@ -83,19 +103,21 @@ def get_lapangan_detail(request, lap_id):
 
 
     # gallery images (absolute urls)
-    gallery = [u for u in (
-        _absolute_url(request, lap.foto_utama),
-        _absolute_url(request, lap.foto_2),
-        _absolute_url(request, lap.foto_3),
-    ) if u]
+    gallery = [
+        f'static/images/lapangan{lap.id}.png',
+        f'static/images/lapangan{lap.id}_2.png',
+        f'static/images/lapangan{lap.id}_3.png',
+    ]
 
     # reviews serialized
-    reviews_qs = Review.objects.filter(field=lap).order_by('-created_at')[:10]
+    reviews_qs = Review.objects.filter(field=lap).order_by('-created_at')
     reviews = [{
-        "user": r.user.username,
+        "id": r.id,
+        "user": r.user.user.username,
         "rating": float(r.rating),
         "content": r.content,
         "created_at": r.created_at.strftime("%Y-%m-%d"),
+        "is_owner": r.user.user == request.user,
     } for r in reviews_qs]
 
     data = {
@@ -105,7 +127,7 @@ def get_lapangan_detail(request, lap_id):
         "location": lap.lokasi,
         "price": int(lap.harga_per_jam),
         "rating": float(lap.rating),
-        "image": _absolute_url(request, lap.foto_utama),
+        "image": f'static/images/lapangan{lap.id}.png',
         "review_count": lap.jumlah_ulasan,
         # tambahan berguna untuk detail view di app
         "deskripsi": lap.deskripsi,
