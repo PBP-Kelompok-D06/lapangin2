@@ -10,6 +10,9 @@ from django.core import serializers
 from django.db.models import Q, Count
 from .models import Community, CommunityMember, CommunityPost, PostComment, CommunityRequest
 from django.views.decorators.csrf import csrf_exempt
+import base64
+import uuid
+from django.core.files.base import ContentFile
 # 🔽 (Hapus render_to_string jika ada, kita tidak membutuhkannya di sini)
 
 def is_pemilik(user):
@@ -515,7 +518,8 @@ def show_json_all_communities(request):
             'image_url': c.community_image.url if c.community_image else "", # Handle gambar kosong
             'contact_person': c.contact_person_name,
             'contact_phone': c.contact_phone,
-            'created_by': c.created_by.username, # Username, bukan ID
+            'created_by': c.created_by.username,
+            'date_added': c.date_added.strftime("%Y-%m-%d"), 
         })
     
     return JsonResponse(data, safe=False)
@@ -787,57 +791,86 @@ def create_post_flutter(request, pk):
     """
     if request.method == 'POST':
         try:
+            # 1. Cek Autentikasi
             if not request.user.is_authenticated:
                 return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
 
             community = get_object_or_404(Community, pk=pk)
 
-            # Cek apakah user adalah member
+            # 2. Cek Membership
             if not CommunityMember.objects.filter(community=community, user=request.user, is_active=True).exists():
                 return JsonResponse({'status': 'error', 'message': 'Anda harus menjadi anggota untuk membuat post.'}, status=403)
 
-            # Handle JSON or Form data
             content = ''
+            image_file = None 
+
+            # -------------------------------------------------------------
+            # LOGIKA PENERJEMAH (BRIDGE) DATA GAMBAR
+            # -------------------------------------------------------------
+            
+            # CASE A: Request dikirim sebagai JSON Body
             if request.content_type == 'application/json':
                 data = json.loads(request.body)
                 content = data.get('content', '').strip()
+                image_data = data.get('image') 
+            
+            # CASE B: Request dikirim sebagai Form Data (Default pbp_django_auth)
             else:
                 content = request.POST.get('content', '').strip()
+                # Cek apakah ada file beneran (Multipart) atau Base64 String di POST
+                image_file = request.FILES.get('image')
+                image_data = request.POST.get('image') # Cek string base64 di sini
 
+            # PROSES DECODE BASE64 (Jika image_data ada dan image_file belum ada)
+            if image_data and not image_file:
+                try:
+                    # Format base64 kadang ada prefix "data:image/jpeg;base64,", kita harus bersihkan
+                    if ";base64," in image_data:
+                        format, imgstr = image_data.split(';base64,') 
+                        ext = format.split('/')[-1] 
+                    else:
+                        imgstr = image_data
+                        ext = "jpg" # default
+
+                    # Generate nama file unik biar gak bentrok (pake UUID)
+                    file_name = f"{request.user.username}_{uuid.uuid4()}.{ext}"
+                    
+                    # Konversi String Base64 -> File Object Django
+                    image_file = ContentFile(base64.b64decode(imgstr), name=file_name)
+                except Exception as e:
+                    print(f"Error decoding base64: {e}")
+
+            # 3. Validasi & Simpan ke Database
             if not content:
                 return JsonResponse({'status': 'error', 'message': 'Konten post tidak boleh kosong.'}, status=400)
-
-            # Handle Image Upload (Multipart)
-            image = request.FILES.get('image')
 
             post = CommunityPost.objects.create(
                 community=community,
                 user=request.user,
                 content=content,
-                image=image
+                image=image_file 
             )
 
+            # 4. Return Response Sukses
             return JsonResponse({
                 'status': 'success', 
                 'message': 'Post berhasil dibuat!',
                 'post': {
                     'pk': post.pk,
                     'content': post.content,
-                    'image_url': post.image.url if post.image else None,
+                    'image_url': post.image.url if post.image else None, 
                     'created_at': post.created_at.strftime("%d %b %Y, %H:%M"),
                     'user': {
                         'username': post.user.username,
-                        'id': post.user.id
                     }
                 }
             })
 
         except Exception as e:
+            print(f"Error Upload: {e}") 
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
     return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
-
-
 @csrf_exempt
 def create_comment_flutter(request, post_id):
     """
