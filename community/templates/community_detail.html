@@ -103,10 +103,18 @@
                     class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-primary mb-3"
                     required></textarea>
           
+          {# ✅ Preview Container (Hidden by default) #}
+          <div id="image-preview-container" class="hidden mb-4 relative inline-block">
+            <img id="image-preview" src="#" alt="Image Preview" class="rounded-lg max-h-48 object-cover border border-gray-200">
+            <button type="button" id="remove-image-btn" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition">
+              <i class="fas fa-times text-xs w-4 h-4 flex items-center justify-center"></i>
+            </button>
+          </div>
+
           <div class="flex justify-between items-center">
             <label class="cursor-pointer text-primary hover:text-[#5A6B4A] transition">
               <i class="fas fa-image mr-2"></i> Upload Foto
-              <input type="file" name="image" accept="image/*" class="hidden">
+              <input type="file" name="image" accept="image/*" class="hidden" id="post-image-input">
             </label>
             <button type="submit" 
                     id="create-post-submit-btn" {# ✅ TAMBAHKAN ID #}
@@ -366,6 +374,36 @@
         const postError = document.getElementById('create-post-error');
         const postSubmitBtn = document.getElementById('create-post-submit-btn');
         const emptyMessage = document.getElementById('empty-posts-message');
+        
+        // Elemen Preview
+        const imageInput = document.getElementById('post-image-input');
+        const previewContainer = document.getElementById('image-preview-container');
+        const previewImage = document.getElementById('image-preview');
+        const removeImageBtn = document.getElementById('remove-image-btn');
+
+        // Logic Preview Image
+        if (imageInput) {
+            imageInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        previewImage.src = e.target.result;
+                        previewContainer.classList.remove('hidden');
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        // Logic Remove Image
+        if (removeImageBtn) {
+            removeImageBtn.addEventListener('click', function() {
+                imageInput.value = ''; // Reset input file
+                previewContainer.classList.add('hidden');
+                previewImage.src = '#';
+            });
+        }
 
         if (postForm) {
             postForm.addEventListener('submit', async (e) => {
@@ -394,6 +432,13 @@
                         const newPostElement = createPostElement(data.post);
                         postsContainer.prepend(newPostElement); // Tambahkan post baru di atas
                         postForm.reset(); // Kosongkan form
+                        
+                        // Reset Preview
+                        if (previewContainer) {
+                            previewContainer.classList.add('hidden');
+                            previewImage.src = '#';
+                        }
+                        
                         if (emptyMessage) {
                             emptyMessage.style.display = 'none'; // Sembunyikan pesan "Belum ada post"
                         }

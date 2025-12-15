@@ -807,11 +807,14 @@ def create_post_flutter(request, pk):
             if not content:
                 return JsonResponse({'status': 'error', 'message': 'Konten post tidak boleh kosong.'}, status=400)
 
+            # Handle Image Upload (Multipart)
+            image = request.FILES.get('image')
+
             post = CommunityPost.objects.create(
                 community=community,
                 user=request.user,
-                content=content
-                # Image upload via Flutter might need special handling (base64), skipping for now or just basic handling if multipart
+                content=content,
+                image=image
             )
 
             return JsonResponse({
@@ -820,6 +823,7 @@ def create_post_flutter(request, pk):
                 'post': {
                     'pk': post.pk,
                     'content': post.content,
+                    'image_url': post.image.url if post.image else None,
                     'created_at': post.created_at.strftime("%d %b %Y, %H:%M"),
                     'user': {
                         'username': post.user.username,
