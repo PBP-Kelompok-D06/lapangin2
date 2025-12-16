@@ -612,43 +612,84 @@ def show_json_my_requests(request):
 def create_community_flutter(request):
     """
     Endpoint khusus untuk membuat komunitas dari Mobile (Flutter)
-    karena biasanya mengirim JSON body, bukan Form data biasa.
+    Mendukung upload gambar via Base64 JSON.
     """
     if request.method == 'POST':
         try:
-            # Handle jika data dikirim sebagai JSON string
+            # Handle JSON Body
             if request.content_type == 'application/json':
                 data = json.loads(request.body)
             else:
-                # Fallback ke POST data biasa
                 data = request.POST
 
-            # Pastikan user login (bisa pakai token authentication nanti untuk mobile)
             if not request.user.is_authenticated:
-                 return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
+                 return JsonResponse({'status': False, 'message': 'Authentication required'}, status=401)
 
-            new_community = Community.objects.create(
-                community_name=data.get('community_name'),
-                description=data.get('description'),
-                location=data.get('location'),
-                sports_type=data.get('sports_type', 'futsal'),
-                max_member=int(data.get('max_member', 50)),
-                contact_person_name=data.get('contact_person_name', request.user.username),
-                contact_phone=data.get('contact_phone', ''),
+            # Ambil data text
+            community_name = data.get('community_name')
+            description = data.get('description')
+            location = data.get('location')
+            sports_type = data.get('sports_type', 'futsal')
+            max_member = int(data.get('max_member', 50))
+            
+            # Key dari Flutter adalah 'contact_person', kita map ke 'contact_person_name'
+            contact_person_name = data.get('contact_person', request.user.username) 
+            contact_phone = data.get('contact_phone', '')
+            image_data = data.get('image') # Base64 String
+
+            # Validasi Dasar
+            if not community_name or not description:
+                 return JsonResponse({'status': False, 'message': 'Nama dan Deskripsi wajib diisi'}, status=400)
+
+            # Buat Object Community (Tanpa Gambar Dulu)
+            new_community = Community(
+                community_name=community_name,
+                description=description,
+                location=location,
+                sports_type=sports_type,
+                max_member=max_member,
+                contact_person_name=contact_person_name, 
+                contact_phone=contact_phone,
                 created_by=request.user,
-                is_active=True # Default true jika via mobile user biasa (sesuaikan logika bisnis)
+                is_active=True,
+                member_count=1 # Member pertama adalah creator
+            )
+
+            # Handle Gambar Base64
+            if image_data:
+                try:
+                    # Bersihkan header data URI scheme jika ada
+                    if ";base64," in image_data:
+                        format, imgstr = image_data.split(';base64,') 
+                        ext = format.split('/')[-1] 
+                    else:
+                        imgstr = image_data
+                        ext = "jpg"
+
+                    file_name = f"{request.user.username}_{uuid.uuid4()}.{ext}"
+                    data_img = ContentFile(base64.b64decode(imgstr), name=file_name)
+                    
+                    # Simpan ke field image (sesuaikan nama field di model, sepertinya 'community_image')
+                    new_community.community_image = data_img 
+                except Exception as e:
+                    print(f"Error decoding image: {e}")
+
+            new_community.save()
+            
+            # Otomatis jadikan creator sebagai member
+            CommunityMember.objects.create(
+                community=new_community,
+                user=request.user,
+                is_active=True
             )
             
-            # Note: Handle upload gambar via API perlu logika tambahan (base64 atau multipart)
-            
-            return JsonResponse({'status': 'success', 'message': 'Community created successfully', 'id': new_community.pk})
+            # Return status True (boolean) agar terbaca sukses di flutter
+            return JsonResponse({'status': True, 'message': 'Community created successfully', 'pk': new_community.pk})
         
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+            return JsonResponse({'status': False, 'message': str(e)}, status=400)
             
-    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
-
-# ... (lanjutan dari imports yang sudah ada)
+    return JsonResponse({'status': False, 'message': 'Method not allowed'}, status=405)
 
 @csrf_exempt
 def join_community_flutter(request, pk):
