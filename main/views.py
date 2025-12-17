@@ -7,6 +7,7 @@ from django.contrib.staticfiles.finders import find
 import os
 import requests # type: ignore
 from django.http import JsonResponse
+from urllib.parse import urlparse
 
 
 def show_landing_page(request):
@@ -71,23 +72,37 @@ def show_landing_page(request):
     }
     return render(request, 'landing_page.html', context)
 
+
 def proxy_image(request):
     image_url = request.GET.get('url')
     if not image_url:
         return HttpResponse('No URL provided', status=400)
-    
+
+    #  SANITIZE: ambil URL terakhir kalau double protocol
+    if "http://" in image_url[1:] or "https://" in image_url[1:]:
+        # ambil protocol terakhir
+        idx = max(image_url.rfind("http://"), image_url.rfind("https://"))
+        image_url = image_url[idx:]
+
+    # VALIDASI URL
+    parsed = urlparse(image_url)
+    if not parsed.scheme or not parsed.netloc:
+        return HttpResponse('Invalid image URL', status=400)
+
     try:
-        # Fetch image from external source
         response = requests.get(image_url, timeout=10)
         response.raise_for_status()
-        
-        # Return the image with proper content type
+
         return HttpResponse(
             response.content,
             content_type=response.headers.get('Content-Type', 'image/jpeg')
         )
+
     except requests.RequestException as e:
-        return HttpResponse(f'Error fetching image: {str(e)}', status=500)
+        return HttpResponse(
+            f'Error fetching image: {str(e)}',
+            status=502  #  lebih tepat daripada 500
+        )
     
 def get_lapangan_list(request):
     lapangan_queryset = Lapangan.objects.all().order_by('pk')
