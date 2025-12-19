@@ -95,22 +95,12 @@ def get_lapangan_list(request):
     data = []
     
     for field in lapangan_queryset:
-        possible_png = f'images/lapangan{field.pk}.png'
-        possible_jpg = f'images/lapangan{field.pk}.jpg'
+        possible_png = f'static/images/lapangan{field.pk}.png'
         
-        image_url = ""
+        image_url = possible_png
 
-        if find(possible_png):
-            image_url = request.build_absolute_uri(static(possible_png))
-            
-        elif find(possible_jpg):
-            image_url = request.build_absolute_uri(static(possible_jpg))
-            
-        elif field.foto_utama:
-            image_url = request.build_absolute_uri(field.foto_utama.url)
-            
-        else:
-            image_url = "https://via.placeholder.com/300x200?text=No+Image"
+        if field.foto_utama:
+            image_url = field.foto_utama.url
 
         data.append({
             "id": field.pk,
