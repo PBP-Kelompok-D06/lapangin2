@@ -95,7 +95,7 @@ def proxy_image(request):
 
         return HttpResponse(
             response.content,
-            content_type=response.headers.get('Content-Type', 'image/jpeg')
+            content_type=response.headers.get('Content-Type', 'image/png')
         )
 
     except requests.RequestException as e:
