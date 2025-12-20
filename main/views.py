@@ -73,84 +73,82 @@ def show_landing_page(request):
     return render(request, 'landing_page.html', context)
 
 logger = logging.getLogger(__name__)
+# REPLACE proxy_image dengan ini untuk better debugging
+
 def proxy_image(request):
     """
-    Proxy untuk load images dari external URLs dengan proper error handling
+    Proxy untuk load images - DEBUG VERSION
     """
     image_url = request.GET.get('url')
     
     if not image_url:
-        logger.error("Proxy image: No URL provided")
+        print("❌ Proxy: No URL provided")
         return HttpResponse('No URL provided', status=400)
 
-    # Decode URL yang mungkin di-encode multiple times
+    # Decode URL
     image_url = unquote(image_url)
-    
-    # DEBUG: Log URL yang diminta
-    logger.info(f"Proxy image request: {image_url}")
+    print(f"🔵 Proxy request: {image_url}")
 
-    # SANITIZE: Handle double protocol
+    # SANITIZE double protocol
     if "http://" in image_url[1:] or "https://" in image_url[1:]:
         idx = max(image_url.rfind("http://"), image_url.rfind("https://"))
         image_url = image_url[idx:]
-        logger.warning(f"Sanitized double protocol URL to: {image_url}")
+        print(f"⚠️ Sanitized to: {image_url}")
 
     # VALIDASI URL
     try:
         parsed = urlparse(image_url)
         if not parsed.scheme or not parsed.netloc:
-            logger.error(f"Invalid URL structure: {image_url}")
+            print(f"❌ Invalid URL: {image_url}")
             return HttpResponse('Invalid image URL', status=400)
     except Exception as e:
-        logger.error(f"URL parsing error: {e}")
+        print(f"❌ Parse error: {e}")
         return HttpResponse('Malformed URL', status=400)
 
     # FETCH IMAGE
     try:
-        # Set headers untuk mimic browser request
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
         }
+        
+        print(f"🔄 Fetching: {image_url}")
         
         response = requests.get(
             image_url, 
-            timeout=15,  # Increased timeout untuk deployment
+            timeout=10,  # Reduced timeout
             headers=headers,
-            verify=True,  # Verify SSL certificates
+            verify=False,  # ⚠️ TEMPORARY: Skip SSL verification for testing
         )
+        
+        print(f"✅ Response status: {response.status_code}")
         response.raise_for_status()
 
-        # Get content type
         content_type = response.headers.get('Content-Type', 'image/jpeg')
+        print(f"✅ Content-Type: {content_type}")
         
-        # Validate it's actually an image
         if not content_type.startswith('image/'):
-            logger.error(f"URL is not an image: {content_type}")
+            print(f"❌ Not an image: {content_type}")
             return HttpResponse('URL does not point to an image', status=400)
 
-        logger.info(f"Successfully proxied image: {image_url}")
-        
-        # Return image with proper headers
         http_response = HttpResponse(response.content, content_type=content_type)
-        http_response['Cache-Control'] = 'public, max-age=86400'  # Cache for 24 hours
+        http_response['Cache-Control'] = 'public, max-age=86400'
         return http_response
 
     except requests.Timeout:
-        logger.error(f"Timeout fetching image: {image_url}")
+        print(f"❌ Timeout fetching: {image_url}")
         return HttpResponse('Image request timeout', status=504)
     
     except requests.ConnectionError as e:
-        logger.error(f"Connection error: {e}")
+        print(f"❌ Connection error: {e}")
         return HttpResponse('Cannot connect to image server', status=502)
     
     except requests.HTTPError as e:
-        logger.error(f"HTTP error fetching image: {e}")
+        print(f"❌ HTTP error: {e}")
         return HttpResponse(f'Image not found: {e}', status=e.response.status_code)
     
     except Exception as e:
-        logger.error(f"Unexpected error fetching image: {str(e)}")
-        return HttpResponse(f'Error fetching image: {str(e)}', status=500)
+        print(f"❌ Unexpected error: {str(e)}")
+        return HttpResponse(f'Error: {str(e)}', status=500)
     
 
 def get_lapangan_list(request):
