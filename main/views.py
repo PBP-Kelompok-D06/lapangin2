@@ -108,7 +108,7 @@ def get_lapangan_list(request):
     data = []
     
     for field in lapangan_queryset:
-        possible_png = f'static/images/lapangan{field.pk}.png'
+        possible_png = f'/static/images/lapangan{field.pk}.png'
         
         image_url = possible_png
 
