@@ -58,11 +58,10 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-
-    'authbooking.middleware.DebugRequestMiddleware',  #untuk debugging authbooking
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'authbooking.middleware.DebugRequestMiddleware',  #untuk debugging authbooking
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -155,15 +154,16 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = '/static/'
-if DEBUG:
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+if not PRODUCTION:  # atau if DEBUG:
     STATICFILES_DIRS = [
         BASE_DIR / 'static' # merujuk ke /static root project pada mode development
     ]
-else:
-    STATIC_ROOT = BASE_DIR / 'static' # merujuk ke /static root project pada mode production
+# else:
+#     STATIC_ROOT = BASE_DIR / 'static' # merujuk ke /static root project pada mode production
 
 
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Di bagian bawah file, setelah STATIC_ROOT
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
