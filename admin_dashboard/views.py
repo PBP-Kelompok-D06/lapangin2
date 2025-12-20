@@ -10,6 +10,7 @@ from django.templatetags.static import static
 from django.contrib.staticfiles.finders import find
 import os
 from django.core.paginator import Paginator
+import base64
 
 
 # Import dari BOOKING models (bukan admin_dashboard models)
@@ -75,23 +76,55 @@ def lapangan_list(request):
     lokasi_filter = request.GET.get('lokasi', '')
 
     # Filter hanya lapangan milik pemilik yang login dan urutkan berdasarkan PK
-    lapangan_queryset = Lapangan.objects.filter(pengelola=request.user.profile).order_by('pk') # <-- Tambahkan order_by('pk')
+    lapangan_queryset = Lapangan.objects.filter(pengelola=request.user.profile).order_by('pk')
 
     if jenis_filter:
         lapangan_queryset = lapangan_queryset.filter(jenis_olahraga=jenis_filter)
     if lokasi_filter:
         lapangan_queryset = lapangan_queryset.filter(lokasi__icontains=lokasi_filter)
 
+    # === HANDLE MOBILE / JSON RESPONSE ===
+    # Cek header Accept atau parameter format=json untuk mendeteksi request dari Flutter/API
+    if request.headers.get('Accept') == 'application/json' or request.GET.get('format') == 'json':
+        data = []
+        for lap in lapangan_queryset:
+            # Cari gambar statis (Logic sama dengan view asli)
+            possible_static_path_png = f'images/lapangan{lap.pk}.png'
+            possible_static_path_jpg = f'images/lapangan{lap.pk}.jpg'
+            static_image_path = None
+            if find(possible_static_path_png):
+                 static_image_path = static(possible_static_path_png)
+            elif find(possible_static_path_jpg):
+                 static_image_path = static(possible_static_path_jpg)
+
+            # Prioritas URL gambar: Uploaded Image -> Static Image -> Default/Empty
+            final_image_url = ""
+            if lap.foto_utama:
+                final_image_url = lap.foto_utama.url
+            elif static_image_path:
+                final_image_url = static_image_path
+            
+            data.append({
+                'pk': lap.pk,
+                'nama': lap.nama_lapangan,
+                'jenis': lap.jenis_olahraga,
+                'lokasi': lap.lokasi,
+                'harga': lap.harga_per_jam,
+                'deskripsi': lap.deskripsi,
+                'fasilitas': lap.fasilitas,
+                'image_url': final_image_url
+            })
+        return JsonResponse({'status': True, 'data': data})
+
+    # === HTML RESPONSE (WEB) ===
     # Siapkan list lapangan untuk ditambahkan path gambar statis
     lapangan_list_with_static = []
     for lapangan in lapangan_queryset:
-        # ASUMSI: Mencoba mencari gambar statis bernama 'images/lapangan<id>.png' atau 'images/lapangan<id>.jpg'
         possible_static_path_png = f'images/lapangan{lapangan.pk}.png'
         possible_static_path_jpg = f'images/lapangan{lapangan.pk}.jpg'
         
-        # Cek apakah file statis tersebut benar-benar ada
         found_static_path = None
-        if find(possible_static_path_png): # find() akan mencari di semua folder static
+        if find(possible_static_path_png): 
              found_static_path = possible_static_path_png
         elif find(possible_static_path_jpg):
              found_static_path = possible_static_path_jpg
@@ -101,7 +134,7 @@ def lapangan_list(request):
         lapangan_list_with_static.append(lapangan)
 
     # --- Bagian Paginator (Jika Anda ingin menambahkannya) ---
-    items_per_page = 16 # Atau angka lain
+    items_per_page = 16 
     paginator = Paginator(lapangan_list_with_static, items_per_page)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -114,9 +147,7 @@ def lapangan_list(request):
     ]
 
     context = {
-        # Jika pakai paginator, ganti 'lapangan_list' dengan 'page_obj'
         'lapangan_list': lapangan_list_with_static, 
-        # 'page_obj': page_obj, # Aktifkan jika pakai paginator
         'jenis_choices': jenis_choices,
         'pending_bookings': get_pending_bookings_count(request.user),
     }
@@ -124,20 +155,43 @@ def lapangan_list(request):
     
 
 
-@pemilik_required
-@require_http_methods(["GET", "POST"])  
+@csrf_exempt
 def lapangan_create(request):
-    """Form untuk membuat lapangan baru"""
+    """Form untuk membuat lapangan baru (Hybrid Request: Web & Mobile/JSON)"""
+    
+    # Deteksi request Mobile/JSON
+    is_mobile_api = request.content_type == 'application/json' or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.GET.get('format') == 'json'
+
+    # 1. Manual Auth Check
+    if not request.user.is_authenticated:
+        if is_mobile_api:
+             return JsonResponse({'status': False, 'message': 'Authentication required'}, status=401)
+        return redirect('login') 
+
+    # 2. Manual Role Check
+    if not is_pemilik(request.user):
+        if is_mobile_api:
+             return JsonResponse({'status': False, 'message': 'Unauthorized. Role is not PEMILIK.'}, status=403)
+        return redirect('dashboard_home')
+
     if request.method == 'POST':
         try:
-            
-            nama = request.POST.get('nama', '').strip()
-            jenis = request.POST.get('jenis', '').strip()
-            lokasi = request.POST.get('lokasi', '').strip()
-            harga = request.POST.get('harga', '').strip()
+            data = {}
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+            else:
+                data = request.POST
+
+            nama = data.get('nama', '').strip()
+            jenis = data.get('jenis', '').strip()
+            lokasi = data.get('lokasi', '').strip()
+            harga = str(data.get('harga', '')).strip() 
             
             if not all([nama, jenis, lokasi, harga]):
-                messages.error(request, 'Semua field wajib diisi!')
+                error_msg = 'Semua field wajib diisi!'
+                if is_mobile_api:
+                    return JsonResponse({'status': False, 'message': error_msg}, status=400)
+                messages.error(request, error_msg)
                 return redirect('admin_dashboard:lapangan_create')
             
             try:
@@ -145,58 +199,80 @@ def lapangan_create(request):
                 if harga_int <= 0:
                     raise ValueError
             except ValueError:
-                messages.error(request, 'Harga harus berupa angka positif!')
+                error_msg = 'Harga harus berupa angka positif!'
+                if is_mobile_api:
+                     return JsonResponse({'status': False, 'message': error_msg}, status=400)
+                messages.error(request, error_msg)
                 return redirect('admin_dashboard:lapangan_create')
-            
             
             valid_jenis = ['Futsal', 'Bulutangkis', 'Basket']
             if jenis not in valid_jenis:
-                messages.error(request, 'Jenis olahraga tidak valid!')
+                error_msg = 'Jenis olahraga tidak valid!'
+                if is_mobile_api:
+                     return JsonResponse({'status': False, 'message': error_msg}, status=400)
+                messages.error(request, error_msg)
                 return redirect('admin_dashboard:lapangan_create')
             
-            
-            foto = request.FILES.get('foto_utama')
-            foto_2 = request.FILES.get('foto_2')
-            foto_3 = request.FILES.get('foto_3')
-            if foto:
-                # Batasi ukuran file (5MB)
-                if foto.size > 5 * 1024 * 1024:
-                    messages.error(request, 'Ukuran foto maksimal 5MB!')
-                    return redirect('admin_dashboard:lapangan_create')
-                
-                # Batasi tipe file
-                allowed_types = ['image/jpeg', 'image/jpg', 'image/png']
-                if foto.content_type not in allowed_types:
-                    messages.error(request, 'Format foto harus JPG atau PNG!')
-                    return redirect('admin_dashboard:lapangan_create')
-            
-            # Buat lapangan baru dengan pengelola = profile pemilik yang login
             lapangan = Lapangan.objects.create(
                 nama_lapangan=nama,
                 jenis_olahraga=jenis,
                 lokasi=lokasi,
                 harga_per_jam=harga_int,
-                deskripsi=request.POST.get('deskripsi', '').strip(),
-                fasilitas=request.POST.get('fasilitas', '').strip(),
+                deskripsi=data.get('deskripsi', '').strip(),
+                fasilitas=data.get('fasilitas', '').strip(),
                 pengelola=request.user.profile
             )
+
+            # Helper: Handle Image
+            def handle_image(files_key, json_key, target_field_name):
+                if request.FILES.get(files_key):
+                    file_obj = request.FILES.get(files_key)
+                    if not is_mobile_api:
+                         if file_obj.size > 5 * 1024 * 1024: raise ValueError(f"Ukuran {files_key} max 5MB")
+                         if file_obj.content_type not in ['image/jpeg', 'image/jpg', 'image/png']: raise ValueError(f"Format {files_key} harus JPG/PNG")
+                    setattr(lapangan, target_field_name, file_obj)
+                elif data.get(json_key):
+                    image_data = data.get(json_key)
+                    try:
+                        if ";base64," in image_data:
+                            format, imgstr = image_data.split(';base64,') 
+                            ext = format.split('/')[-1] 
+                        else:
+                            imgstr = image_data
+                            ext = "jpg"
+                        file_name = f"{request.user.username}_{uuid.uuid4()}.{ext}"
+                        data_img = ContentFile(base64.b64decode(imgstr), name=file_name)
+                        setattr(lapangan, target_field_name, data_img)
+                    except Exception as e:
+                        print(f"Error decoding {json_key}: {e}") 
             
-            if foto:
-                lapangan.foto_utama = foto
-            if foto_2:
-                lapangan.foto_2 = foto_2
-            if foto_3:
-                lapangan.foto_3 = foto_3
-                
+            try:
+                handle_image('foto_utama', 'foto_utama', 'foto_utama')
+                handle_image('foto_2', 'foto_2', 'foto_2')
+                handle_image('foto_3', 'foto_3', 'foto_3')
+            except ValueError as ve:
+                 lapangan.delete() 
+                 if is_mobile_api: return JsonResponse({'status': False, 'message': str(ve)}, status=400)
+                 messages.error(request, str(ve))
+                 return redirect('admin_dashboard:lapangan_create')
+
             lapangan.save()
+            
+            if is_mobile_api:
+                return JsonResponse({'status': True, 'message': 'Lapangan berhasil ditambahkan!', 'pk': lapangan.pk})
             
             messages.success(request, 'Lapangan berhasil ditambahkan!')
             return redirect('admin_dashboard:lapangan_list')
             
         except Exception as e:
+            if is_mobile_api:
+                 return JsonResponse({'status': False, 'message': str(e)}, status=500)
             messages.error(request, f'Terjadi kesalahan: {str(e)}')
             return redirect('admin_dashboard:lapangan_create')
     
+    if is_mobile_api:
+         return JsonResponse({'status': False, 'message': 'Method not allowed'}, status=405)
+
     jenis_choices = [
         ('Futsal', 'Futsal'),
         ('Bulutangkis', 'Bulutangkis'),
@@ -210,20 +286,31 @@ def lapangan_create(request):
     return render(request, 'admin_dashboard/lapangan_form.html', context)
 
 
-@pemilik_required
-@require_http_methods(["GET", "POST"])  
+@csrf_exempt
 def lapangan_edit(request, pk):
-    """Edit lapangan yang sudah ada"""
+    """Edit lapangan yang sudah ada (Hybrid Request)"""
+    
+    is_mobile_api = request.content_type == 'application/json' or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.GET.get('format') == 'json'
+
+    # 1. Auth Check
+    if not request.user.is_authenticated:
+        if is_mobile_api: return JsonResponse({'status': False, 'message': 'Authentication required'}, status=401)
+        return redirect('login')
+    
+    # 2. Role Check
+    if not is_pemilik(request.user):
+        if is_mobile_api: return JsonResponse({'status': False, 'message': 'Unauthorized'}, status=403)
+        return redirect('dashboard_home')
     
     lapangan = get_object_or_404(Lapangan, pk=pk, pengelola=request.user.profile)
-    
+
     if request.method == 'POST':
         try:
             nama = request.POST.get('nama', '').strip()
             jenis = request.POST.get('jenis', '').strip()
             lokasi = request.POST.get('lokasi', '').strip()
             harga = request.POST.get('harga', '').strip()
-            
+
             if not all([nama, jenis, lokasi, harga]):
                 messages.error(request, 'Semua field wajib diisi!')
                 return render(request, 'admin_dashboard/lapangan_form.html', {
@@ -234,111 +321,88 @@ def lapangan_edit(request, pk):
             
             try:
                 harga_int = int(harga)
-                if harga_int <= 0:
-                    raise ValueError
+                if harga_int <= 0: raise ValueError
             except ValueError:
-                messages.error(request, 'Harga harus berupa angka positif!')
+                error_msg = 'Harga harus berupa angka positif!'
+                if is_mobile_api: return JsonResponse({'status': False, 'message': error_msg}, status=400)
+                messages.error(request, error_msg)
                 return render(request, 'admin_dashboard/lapangan_form.html', {
                     'lapangan': lapangan,
                     'jenis_choices': [('Futsal', 'Futsal'), ('Bulutangkis', 'Bulutangkis'), ('Basket', 'Basket')],
                     'pending_bookings': get_pending_bookings_count(request.user),
                 })
-            
+
             valid_jenis = ['Futsal', 'Bulutangkis', 'Basket']
             if jenis not in valid_jenis:
-                messages.error(request, 'Jenis olahraga tidak valid!')
-                return render(request, 'admin_dashboard/lapangan_form.html', {
+                 if is_mobile_api: return JsonResponse({'status': False, 'message': 'Jenis tidak valid'}, status=400)
+                 messages.error(request, 'Jenis tidak valid!')
+                 return render(request, 'admin_dashboard/lapangan_form.html', {
                     'lapangan': lapangan,
                     'jenis_choices': [('Futsal', 'Futsal'), ('Bulutangkis', 'Bulutangkis'), ('Basket', 'Basket')],
                     'pending_bookings': get_pending_bookings_count(request.user),
                 })
             
-            # Update data dasar lapangan
+            # Update Fields
             lapangan.nama_lapangan = nama
             lapangan.jenis_olahraga = jenis
             lapangan.lokasi = lokasi
             lapangan.harga_per_jam = harga_int
-            lapangan.deskripsi = request.POST.get('deskripsi', '').strip()
-            lapangan.fasilitas = request.POST.get('fasilitas', '').strip()
-            
-            # Ambil file foto
-            foto = request.FILES.get('foto_utama')
-            foto_2 = request.FILES.get('foto_2')
-            foto_3 = request.FILES.get('foto_3')
-            
-            # Allowed types untuk semua foto
-            allowed_types = ['image/jpeg', 'image/jpg', 'image/png']
-            max_size = 5 * 1024 * 1024  # 5MB
-            
-            # Validasi dan update FOTO UTAMA
-            if foto:
-                if foto.size > max_size:
-                    messages.error(request, 'Ukuran foto utama maksimal 5MB!')
-                    return render(request, 'admin_dashboard/lapangan_form.html', {
-                        'lapangan': lapangan,
-                        'jenis_choices': [('Futsal', 'Futsal'), ('Bulutangkis', 'Bulutangkis'), ('Basket', 'Basket')],
-                        'pending_bookings': get_pending_bookings_count(request.user),
-                    })
+            lapangan.deskripsi = data.get('deskripsi', lapangan.deskripsi).strip()
+            lapangan.fasilitas = data.get('fasilitas', lapangan.fasilitas).strip()
+
+            # Helper Image
+            def update_image(files_key, json_key, target_field_name):
+                if request.FILES.get(files_key):
+                    file_obj = request.FILES.get(files_key)
+                    if not is_mobile_api: # Web Validation
+                         if file_obj.size > 5 * 1024 * 1024: raise ValueError(f"Ukuran {files_key} max 5MB")
+                         if file_obj.content_type not in ['image/jpeg', 'image/jpg', 'image/png']: raise ValueError(f"Format {files_key} salah")
+                    setattr(lapangan, target_field_name, file_obj)
                 
-                if foto.content_type not in allowed_types:
-                    messages.error(request, 'Format foto utama harus JPG atau PNG!')
-                    return render(request, 'admin_dashboard/lapangan_form.html', {
-                        'lapangan': lapangan,
-                        'jenis_choices': [('Futsal', 'Futsal'), ('Bulutangkis', 'Bulutangkis'), ('Basket', 'Basket')],
-                        'pending_bookings': get_pending_bookings_count(request.user),
-                    })
-                
-                lapangan.foto_utama = foto
-            
-            # Validasi dan update FOTO 2
-            if foto_2:
-                if foto_2.size > max_size:  # FIX: Gunakan foto_2.size bukan foto.size
-                    messages.error(request, 'Ukuran foto 2 maksimal 5MB!')
-                    return render(request, 'admin_dashboard/lapangan_form.html', {
-                        'lapangan': lapangan,
-                        'jenis_choices': [('Futsal', 'Futsal'), ('Bulutangkis', 'Bulutangkis'), ('Basket', 'Basket')],
-                        'pending_bookings': get_pending_bookings_count(request.user),
-                    })
-                
-                if foto_2.content_type not in allowed_types:  # FIX: Gunakan foto_2.content_type
-                    messages.error(request, 'Format foto 2 harus JPG atau PNG!')
-                    return render(request, 'admin_dashboard/lapangan_form.html', {
-                        'lapangan': lapangan,
-                        'jenis_choices': [('Futsal', 'Futsal'), ('Bulutangkis', 'Bulutangkis'), ('Basket', 'Basket')],
-                        'pending_bookings': get_pending_bookings_count(request.user),
-                    })
-                
-                lapangan.foto_2 = foto_2
-            
-            # Validasi dan update FOTO 3
-            if foto_3:
-                if foto_3.size > max_size:  # FIX: Gunakan foto_3.size bukan foto.size
-                    messages.error(request, 'Ukuran foto 3 maksimal 5MB!')
-                    return render(request, 'admin_dashboard/lapangan_form.html', {
-                        'lapangan': lapangan,
-                        'jenis_choices': [('Futsal', 'Futsal'), ('Bulutangkis', 'Bulutangkis'), ('Basket', 'Basket')],
-                        'pending_bookings': get_pending_bookings_count(request.user),
-                    })
-                
-                if foto_3.content_type not in allowed_types:  # FIX: Gunakan foto_3.content_type
-                    messages.error(request, 'Format foto 3 harus JPG atau PNG!')
-                    return render(request, 'admin_dashboard/lapangan_form.html', {
-                        'lapangan': lapangan,
-                        'jenis_choices': [('Futsal', 'Futsal'), ('Bulutangkis', 'Bulutangkis'), ('Basket', 'Basket')],
-                        'pending_bookings': get_pending_bookings_count(request.user),
-                    })
-                
-                lapangan.foto_3 = foto_3
-            
-            # Save lapangan setelah semua validasi berhasil
+                elif data.get(json_key): # JSON Base64
+                    image_data = data.get(json_key)
+                    try:
+                        if ";base64," in image_data:
+                            format, imgstr = image_data.split(';base64,') 
+                            ext = format.split('/')[-1] 
+                        else:
+                            imgstr = image_data
+                            ext = "jpg"
+                        file_name = f"{request.user.username}_{uuid.uuid4()}.{ext}"
+                        data_img = ContentFile(base64.b64decode(imgstr), name=file_name)
+                        setattr(lapangan, target_field_name, data_img)
+                    except Exception as e:
+                        print(f"Error update {json_key}: {e}")
+
+            try:
+                update_image('foto_utama', 'foto_utama', 'foto_utama')
+                update_image('foto_2', 'foto_2', 'foto_2')
+                update_image('foto_3', 'foto_3', 'foto_3')
+            except ValueError as ve:
+                if is_mobile_api: return JsonResponse({'status': False, 'message': str(ve)}, status=400)
+                messages.error(request, str(ve))
+                return render(request, 'admin_dashboard/lapangan_form.html', {
+                    'lapangan': lapangan,
+                    'jenis_choices': [('Futsal', 'Futsal'), ('Bulutangkis', 'Bulutangkis'), ('Basket', 'Basket')],
+                    'pending_bookings': get_pending_bookings_count(request.user),
+                })
+
             lapangan.save()
             
+            if is_mobile_api:
+                return JsonResponse({'status': True, 'message': 'Lapangan berhasil diupdate!'})
+
             messages.success(request, 'Lapangan berhasil diupdate!')
             return redirect('admin_dashboard:lapangan_list')
             
         except Exception as e:
+            if is_mobile_api: return JsonResponse({'status': False, 'message': str(e)}, status=500)
             messages.error(request, f'Terjadi kesalahan: {str(e)}')
+            # Fallback render
     
+    # GET Request
+    if is_mobile_api: return JsonResponse({'status': False, 'message': 'Method not allowed'}, status=405)
+
     jenis_choices = [
         ('Futsal', 'Futsal'),
         ('Bulutangkis', 'Bulutangkis'),
@@ -353,28 +417,45 @@ def lapangan_edit(request, pk):
     return render(request, 'admin_dashboard/lapangan_form.html', context)
 
 
-@pemilik_required
-@require_http_methods(["GET", "POST"])  
+@csrf_exempt
 def lapangan_delete(request, pk):
-    """Hapus lapangan"""
+    """Hapus lapangan (Hybrid Request)"""
+    
+    is_mobile_api = request.content_type == 'application/json' or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.GET.get('format') == 'json'
+
+    # 1. Auth Check
+    if not request.user.is_authenticated:
+        if is_mobile_api: return JsonResponse({'status': False, 'message': 'Authentication required'}, status=401)
+        return redirect('login')
+    
+    # 2. Role Check
+    if not is_pemilik(request.user):
+        if is_mobile_api: return JsonResponse({'status': False, 'message': 'Unauthorized'}, status=403)
+        return redirect('dashboard_home')
     
     lapangan = get_object_or_404(Lapangan, pk=pk, pengelola=request.user.profile)
     
     if request.method == 'POST':
-        
         active_bookings = Booking.objects.filter(
             slot__lapangan=lapangan,
             status_pembayaran__in=['PENDING', 'PAID']
         ).exists()
         
         if active_bookings:
-            messages.error(request, 'Tidak dapat menghapus lapangan yang masih memiliki booking aktif!')
+            error_msg = 'Tidak dapat menghapus lapangan yang masih memiliki booking aktif!'
+            if is_mobile_api: return JsonResponse({'status': False, 'message': error_msg}, status=400)
+            messages.error(request, error_msg)
             return redirect('admin_dashboard:lapangan_list')
         
         lapangan.delete()
+        if is_mobile_api: return JsonResponse({'status': True, 'message': 'Lapangan berhasil dihapus!'})
+        
         messages.success(request, 'Lapangan berhasil dihapus!')
         return redirect('admin_dashboard:lapangan_list')
     
+    # GET Request (Web only for confirmation page)
+    if is_mobile_api: return JsonResponse({'status': False, 'message': 'Method not allowed. Use POST to delete.'}, status=405)
+
     context = {
         'lapangan': lapangan,
         'pending_bookings': get_pending_bookings_count(request.user),
@@ -383,27 +464,63 @@ def lapangan_delete(request, pk):
 
 
 # ==================== BOOKING MANAGEMENT ====================
-@pemilik_required
 def booking_pending_list(request):
-    """Menampilkan daftar booking PENDING untuk di-approve/reject"""
+    """Menampilkan daftar booking PENDING untuk di-approve/reject (Hybrid)"""
+    
+    is_mobile_api = request.content_type == 'application/json' or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.GET.get('format') == 'json'
+
+    # 1. Auth Check
+    if not request.user.is_authenticated:
+        if is_mobile_api: return JsonResponse({'status': False, 'message': 'Authentication required'}, status=401)
+        return redirect('login')
+    
+    # 2. Role Check
+    if not is_pemilik(request.user):
+        if is_mobile_api: return JsonResponse({'status': False, 'message': 'Unauthorized'}, status=403)
+        return redirect('dashboard_home')
+
     # Filter booking PENDING untuk lapangan milik pemilik yang login
     pending_bookings = Booking.objects.filter(
         slot__lapangan__pengelola=request.user.profile,
         status_pembayaran='PENDING'
     ).select_related('user', 'slot', 'slot__lapangan').order_by('-tanggal_booking')
     
+    # === JSON RESPONSE ===
+    if is_mobile_api:
+        data = []
+        for b in pending_bookings:
+            data.append({
+                'id': b.id,
+                'user': b.user.username,
+                'lapangan': b.slot.lapangan.nama_lapangan,
+                'tanggal': b.slot.tanggal.strftime('%Y-%m-%d'),
+                'jam': f"{b.slot.jam_mulai.strftime('%H:%M')} - {b.slot.jam_akhir.strftime('%H:%M')}",
+                'total_bayar': b.total_bayar,
+                'bukti_transfer': b.bukti_transfer.url if b.bukti_transfer else None,
+                'tanggal_booking': b.tanggal_booking.strftime('%Y-%m-%d %H:%M')
+            })
+        return JsonResponse({'status': True, 'data': data})
+
     context = {
         'pending_bookings': pending_bookings,
     }
     return render(request, 'admin_dashboard/booking_pending_list.html', context)
 
 
-@pemilik_required
-@require_http_methods(["GET", "POST"])  
-@csrf_protect  
+@csrf_exempt
 def booking_approve(request, pk):
-    """Approve booking (PENDING → PAID, slot jadi BOOKED)"""
+    """Approve booking (PENDING → PAID, slot jadi BOOKED) (Hybrid)"""
     
+    is_mobile_api = request.content_type == 'application/json' or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.GET.get('format') == 'json'
+
+    # Auth & Role Check
+    if not request.user.is_authenticated:
+        if is_mobile_api: return JsonResponse({'status': False, 'message': 'Authentication required'}, status=401)
+        return redirect('login')
+    if not is_pemilik(request.user):
+        if is_mobile_api: return JsonResponse({'status': False, 'message': 'Unauthorized'}, status=403)
+        return redirect('dashboard_home')
+
     booking = get_object_or_404(
         Booking, 
         pk=pk, 
@@ -413,9 +530,10 @@ def booking_approve(request, pk):
     
     if request.method == 'POST':
         try:
-            
             if booking.status_pembayaran != 'PENDING':
-                messages.error(request, 'Booking ini sudah diproses!')
+                msg = 'Booking ini sudah diproses!'
+                if is_mobile_api: return JsonResponse({'status': False, 'message': msg}, status=400)
+                messages.error(request, msg)
                 return redirect('admin_dashboard:booking_pending')
             
             # Update status booking jadi PAID
@@ -428,13 +546,19 @@ def booking_approve(request, pk):
             slot.pending_booking = None  # Clear pending
             slot.save()
             
+            if is_mobile_api: return JsonResponse({'status': True, 'message': 'Booking approved successfully'})
+
             messages.success(request, f'Booking #{booking.id} berhasil di-approve!')
             return redirect('admin_dashboard:booking_pending')
             
         except Exception as e:
+            if is_mobile_api: return JsonResponse({'status': False, 'message': str(e)}, status=500)
             messages.error(request, f'Terjadi kesalahan: {str(e)}')
             return redirect('admin_dashboard:booking_pending')
     
+    # GET Request
+    if is_mobile_api: return JsonResponse({'status': False, 'message': 'Method not allowed'}, status=405)
+
     context = {
         'booking': booking,
         'pending_bookings': get_pending_bookings_count(request.user),
@@ -442,12 +566,20 @@ def booking_approve(request, pk):
     return render(request, 'admin_dashboard/booking_approve_confirm.html', context)
 
 
-@pemilik_required
-@require_http_methods(["GET", "POST"])  
-@csrf_protect  
+@csrf_exempt
 def booking_reject(request, pk):
-    """Reject booking (PENDING → CANCELLED, slot jadi AVAILABLE)"""
+    """Reject booking (PENDING → CANCELLED, slot jadi AVAILABLE) (Hybrid)"""
     
+    is_mobile_api = request.content_type == 'application/json' or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.GET.get('format') == 'json'
+
+    # Auth & Role Check
+    if not request.user.is_authenticated:
+        if is_mobile_api: return JsonResponse({'status': False, 'message': 'Authentication required'}, status=401)
+        return redirect('login')
+    if not is_pemilik(request.user):
+        if is_mobile_api: return JsonResponse({'status': False, 'message': 'Unauthorized'}, status=403)
+        return redirect('dashboard_home')
+
     booking = get_object_or_404(
         Booking, 
         pk=pk, 
@@ -457,9 +589,10 @@ def booking_reject(request, pk):
     
     if request.method == 'POST':
         try:
-            
             if booking.status_pembayaran != 'PENDING':
-                messages.error(request, 'Booking ini sudah diproses!')
+                msg = 'Booking ini sudah diproses!'
+                if is_mobile_api: return JsonResponse({'status': False, 'message': msg}, status=400)
+                messages.error(request, msg)
                 return redirect('admin_dashboard:booking_pending')
             
             # Update status booking jadi CANCELLED
@@ -472,13 +605,19 @@ def booking_reject(request, pk):
             slot.pending_booking = None  # Clear pending
             slot.save()
             
+            if is_mobile_api: return JsonResponse({'status': True, 'message': 'Booking rejected successfully'})
+
             messages.success(request, f'Booking #{booking.id} berhasil ditolak!')
             return redirect('admin_dashboard:booking_pending')
             
         except Exception as e:
+            if is_mobile_api: return JsonResponse({'status': False, 'message': str(e)}, status=500)
             messages.error(request, f'Terjadi kesalahan: {str(e)}')
             return redirect('admin_dashboard:booking_pending')
     
+    # GET Request
+    if is_mobile_api: return JsonResponse({'status': False, 'message': 'Method not allowed'}, status=405)
+
     context = {
         'booking': booking,
         'pending_bookings': get_pending_bookings_count(request.user),
@@ -486,35 +625,65 @@ def booking_reject(request, pk):
     return render(request, 'admin_dashboard/booking_reject_confirm.html', context)
 
 
-@pemilik_required
 def transaksi_list(request):
+    """Menampilkan daftar transaksi (PAID/CANCELLED) (Hybrid)"""
+    
+    is_mobile_api = request.content_type == 'application/json' or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.GET.get('format') == 'json'
+
+    # Auth & Role Check
+    if not request.user.is_authenticated:
+        if is_mobile_api: return JsonResponse({'status': False, 'message': 'Authentication required'}, status=401)
+        return redirect('login')
+    if not is_pemilik(request.user):
+        if is_mobile_api: return JsonResponse({'status': False, 'message': 'Unauthorized'}, status=403)
+        return redirect('dashboard_home')
+
     status_filter = request.GET.get('status', '')
 
-    # 1. Dapatkan SEMUA transaksi yang relevan (mungkin perlu filter per user)
-    # Ganti .all() dengan filter yang sesuai untuk pemilik ini
+    # 1. Dapatkan SEMUA transaksi yang relevan (Filter by OWNER!)
     all_transactions_base = Booking.objects.filter(
-        status_pembayaran__in=['PAID', 'CANCELLED']
-        # CONTOH: (sesuaikan dengan model Anda)
-        # slot__lapangan__pemilik=request.user 
+        status_pembayaran__in=['PAID', 'CANCELLED'],
+        slot__lapangan__pengelola=request.user.profile # Fix: Scope to owner
     )
 
-    # 2. Hitung jumlah untuk kartu summary SEBELUM memfilter
+    # 2. Hitung jumlah untuk kartu summary SEBELUM memfilter untuk tabel
     paid_count = all_transactions_base.filter(status_pembayaran='PAID').count()
     cancelled_count = all_transactions_base.filter(status_pembayaran='CANCELLED').count()
 
-    # 3. SEKARANG, filter daftar untuk ditampilkan di tabel
+    # 3. Filter daftar untuk ditampilkan
     table_transactions = all_transactions_base
     if status_filter:
         table_transactions = table_transactions.filter(status_pembayaran=status_filter)
+    
+    table_transactions = table_transactions.order_by('-tanggal_booking')
+
+    # === JSON RESPONSE ===
+    if is_mobile_api:
+        data = []
+        for t in table_transactions:
+            data.append({
+                'id': t.id,
+                'user': t.user.username,
+                'lapangan': t.slot.lapangan.nama_lapangan,
+                'tanggal': t.slot.tanggal.strftime('%Y-%m-%d'),
+                'jam': f"{t.slot.jam_mulai.strftime('%H:%M')} - {t.slot.jam_akhir.strftime('%H:%M')}",
+                'total_bayar': t.total_bayar,
+                'status': t.status_pembayaran,
+                'tanggal_booking': t.tanggal_booking.strftime('%Y-%m-%d %H:%M')
+            })
+        return JsonResponse({
+            'status': True, 
+            'data': data,
+            'summary': {
+                'paid': paid_count,
+                'cancelled': cancelled_count
+            }
+        })
 
     context = {
-        # 'transaksi' sekarang berisi daftar yang sudah difilter untuk tabel
-        'transaksi': table_transactions.order_by('-tanggal_booking'), 
-        
-        # Kirim hasil hitungan ke template
+        'transaksi': table_transactions, 
         'paid_count': paid_count,
         'cancelled_count': cancelled_count,
-        
         'status_filter': status_filter,
     }
     

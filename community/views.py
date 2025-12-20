@@ -315,11 +315,31 @@ def admin_community_list(request):
         # Gunakan __icontains untuk pencarian yang tidak case-sensitive
         community_list = community_list.filter(location__icontains=lokasi_filter)
 
-    # Kirim data yang sudah difilter ke template
+    # === HANDLE MOBILE / JSON RESPONSE ===
+    # Cek header Accept atau parameter format=json untuk mendeteksi request dari Flutter
+    if request.headers.get('Accept') == 'application/json' or request.GET.get('format') == 'json':
+        data = []
+        for c in community_list:
+            data.append({
+                'pk': c.pk,
+                'community_name': c.community_name,
+                'description': c.description,
+                'location': c.location,
+                'sports_type': c.sports_type,
+                'member_count': c.member_count,
+                'max_member': c.max_member,
+                # Handle image_url
+                'image_url': c.community_image.url if c.community_image else "",
+                'contact_person_name': c.contact_person_name,
+                'contact_phone': c.contact_phone,
+                'created_by': c.created_by.username,
+                'created_at': c.date_added.strftime("%Y-%m-%d") if hasattr(c, 'date_added') else "",
+            })
+        return JsonResponse({'status': True, 'data': data})
+
+    # Kirim data yang sudah difilter ke template (WEB)
     context = {
         'community_list': community_list
-        # Kita tidak perlu mengirim 'jenis_filter' dan 'lokasi_filter' 
-        # karena template sudah membacanya dari 'request.GET'
     }
     
     return render(request, 'admin_community_list.html', context)
@@ -357,32 +377,100 @@ def admin_community_create(request):
 
 @login_required
 @user_passes_test(is_pemilik)
+@csrf_exempt
 def admin_community_edit(request, pk):
-    """Edit komunitas"""
-    community = get_object_or_404(Community, pk=pk, created_by=request.user)
-    
+    """
+    Unified Endpoint untuk Edit Komunitas
+    - Handle Web Request (HTML Form) -> URL: /community/admin/<pk>/edit/
+    - Handle Mobile Request (JSON/API) -> URL: /community/api/<pk>/edit-flutter/
+    """
+    # Deteksi apakah request berasal dari Mobile/API (biasanya ada header khusus atau content-type json)
+    # Kita bisa cek content-type atau header X-Requested-With, atau sekadar asumsi dari path (tapi ini satu view)
+    # Cara paling aman: Cek Accept header atau Content-Type
+    is_mobile_api = request.content_type == 'application/json' or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'api/' in request.path
+
+    # 2. Validasi Authorization (Owner / Superuser)
+    if community.created_by != request.user and not request.user.is_superuser:
+        if is_mobile_api:
+             return JsonResponse({'status': False, 'message': 'Anda tidak memiliki izin mengedit komunitas ini.'}, status=403)
+        messages.error(request, 'Anda tidak memiliki izin mengedit komunitas ini.')
+        return redirect('community:admin_community_list')
+
+    # === HANDLE POST REQUEST (UPDATE DATA) ===
     if request.method == 'POST':
         try:
-            community.community_name = request.POST.get('community_name')
-            community.description = request.POST.get('description')
-            community.location = request.POST.get('location')
-            community.sports_type = request.POST.get('sports_type')
-            community.max_member = request.POST.get('max_member', 50)
-            community.contact_person_name = request.POST.get('contact_person_name', request.user.username)
-            community.contact_phone = request.POST.get('contact_phone', '')
+            # Init data container
+            data = {}
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+            else:
+                data = request.POST
+
+            # Update Fields
+            # Gunakan .get() dengan default value dari instance existing
+            community.community_name = data.get('community_name', community.community_name)
+            community.description = data.get('description', community.description)
+            community.location = data.get('location', community.location)
+            community.sports_type = data.get('sports_type', community.sports_type)
             
-            if request.FILES.get('community_image'):
-                community.community_image = request.FILES['community_image']
+            # Handle max_member (perlu casting int)
+            if 'max_member' in data:
+                 try:
+                    community.max_member = int(data.get('max_member'))
+                 except ValueError:
+                     pass # abaikan jika tidak valid
+
+            community.contact_person_name = data.get('contact_person', data.get('contact_person_name', community.contact_person_name))
+            community.contact_phone = data.get('contact_phone', community.contact_phone)
             
+            # Handle Image Update
+            # Prioritas 1: File Upload (Multipart via Web atau Mobile Multipart)
+            if request.FILES.get('community_image') or request.FILES.get('image'):
+                image_file = request.FILES.get('community_image') or request.FILES.get('image')
+                community.community_image = image_file
+            
+            # Prioritas 2: Base64 String (Mobile JSON)
+            elif data.get('image'):
+                image_data = data.get('image')
+                try:
+                    if ";base64," in image_data:
+                        format, imgstr = image_data.split(';base64,') 
+                        ext = format.split('/')[-1] 
+                    else:
+                        imgstr = image_data
+                        ext = "jpg"
+                    file_name = f"{request.user.username}_{uuid.uuid4()}.{ext}"
+                    data_img = ContentFile(base64.b64decode(imgstr), name=file_name)
+                    community.community_image = data_img
+                except Exception as e:
+                    print(f"Error decoding image: {e}")
+
             community.save()
-            
-            messages.success(request, 'Komunitas berhasil diupdate!')
-            return redirect('community:admin_community_list')
+
+            if is_mobile_api:
+                return JsonResponse({'status': True, 'message': 'Community updated successfully'})
+            else:
+                messages.success(request, 'Komunitas berhasil diperbarui!')
+                return redirect('community:admin_community_list')
             
         except Exception as e:
-            messages.error(request, f'Terjadi kesalahan: {str(e)}')
+            if is_mobile_api:
+                return JsonResponse({'status': False, 'message': str(e)}, status=400)
+            else:
+                messages.error(request, f'Terjadi kesalahan: {str(e)}')
+                # Fallthrough ke render form ulang
+
+    # === HANDLE GET REQUEST (FORM DISPLAY) ===
+    # Mobile API biasanya tidak minta GET form, tapi kalau minta detail bisa dihandle terpisah.
+    # Di sini kita asumsikan GET adalah untuk Web Form.
     
-    context = {'community': community}
+    if is_mobile_api and request.method != 'POST':
+         return JsonResponse({'status': False, 'message': 'Method not allowed for API'}, status=405)
+
+    context = {
+        'community': community,
+        'is_edit': True
+    }
     return render(request, 'admin_community_form.html', context)
 
 

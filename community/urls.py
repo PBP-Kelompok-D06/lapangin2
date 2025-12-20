@@ -39,6 +39,7 @@ urlpatterns = [
     path('admin/list/', views.admin_community_list, name='admin_community_list'),
     path('admin/create/', views.admin_community_create, name='admin_community_create'),
     path('admin/<int:pk>/edit/', views.admin_community_edit, name='admin_community_edit'),
+    path('api/<int:pk>/edit-flutter/', views.admin_community_edit, name='edit_community_flutter'),
     path('admin/<int:pk>/delete/', views.admin_community_delete, name='admin_community_delete'),
     path('admin/requests/', views.admin_request_list, name='admin_request_list'),
     path('admin/requests/<int:pk>/approve/', views.admin_request_approve, name='admin_request_approve'),
