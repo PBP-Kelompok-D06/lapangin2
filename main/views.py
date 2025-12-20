@@ -7,8 +7,7 @@ from django.contrib.staticfiles.finders import find
 import os
 import requests # type: ignore
 from django.http import JsonResponse
-from urllib.parse import urlparse, unquote
-import logging
+from urllib.parse import urlparse
 
 def show_landing_page(request):
     """Menampilkan Landing Page Lapang.in dengan daftar lapangan dan pagination."""
@@ -72,153 +71,59 @@ def show_landing_page(request):
     }
     return render(request, 'landing_page.html', context)
 
-logger = logging.getLogger(__name__)
-# REPLACE proxy_image dengan ini untuk better debugging
-
 def proxy_image(request):
-    """
-    Proxy untuk load images - DEBUG VERSION
-    """
     image_url = request.GET.get('url')
-    
     if not image_url:
-        print("❌ Proxy: No URL provided")
         return HttpResponse('No URL provided', status=400)
 
-    # Decode URL
-    image_url = unquote(image_url)
-    print(f"🔵 Proxy request: {image_url}")
-
-    # SANITIZE double protocol
+    #  SANITIZE: ambil URL terakhir kalau double protocol
     if "http://" in image_url[1:] or "https://" in image_url[1:]:
+        # ambil protocol terakhir
         idx = max(image_url.rfind("http://"), image_url.rfind("https://"))
         image_url = image_url[idx:]
-        print(f"⚠️ Sanitized to: {image_url}")
 
     # VALIDASI URL
-    try:
-        parsed = urlparse(image_url)
-        if not parsed.scheme or not parsed.netloc:
-            print(f"❌ Invalid URL: {image_url}")
-            return HttpResponse('Invalid image URL', status=400)
-    except Exception as e:
-        print(f"❌ Parse error: {e}")
-        return HttpResponse('Malformed URL', status=400)
+    parsed = urlparse(image_url)
+    if not parsed.scheme or not parsed.netloc:
+        return HttpResponse('Invalid image URL', status=400)
 
-    # FETCH IMAGE
     try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        }
-        
-        print(f"🔄 Fetching: {image_url}")
-        
-        response = requests.get(
-            image_url, 
-            timeout=10,  # Reduced timeout
-            headers=headers,
-            verify=False,  # ⚠️ TEMPORARY: Skip SSL verification for testing
-        )
-        
-        print(f"✅ Response status: {response.status_code}")
+        response = requests.get(image_url, timeout=10)
         response.raise_for_status()
 
-        content_type = response.headers.get('Content-Type', 'image/jpeg')
-        print(f"✅ Content-Type: {content_type}")
-        
-        if not content_type.startswith('image/'):
-            print(f"❌ Not an image: {content_type}")
-            return HttpResponse('URL does not point to an image', status=400)
+        return HttpResponse(
+            response.content,
+            content_type=response.headers.get('Content-Type', 'image/png')
+        )
 
-        http_response = HttpResponse(response.content, content_type=content_type)
-        http_response['Cache-Control'] = 'public, max-age=86400'
-        return http_response
-
-    except requests.Timeout:
-        print(f"❌ Timeout fetching: {image_url}")
-        return HttpResponse('Image request timeout', status=504)
+    except requests.RequestException as e:
+        return HttpResponse(
+            f'Error fetching image: {str(e)}',
+            status=502  #  lebih tepat daripada 500
+        )
     
-    except requests.ConnectionError as e:
-        print(f"❌ Connection error: {e}")
-        return HttpResponse('Cannot connect to image server', status=502)
-    
-    except requests.HTTPError as e:
-        print(f"❌ HTTP error: {e}")
-        return HttpResponse(f'Image not found: {e}', status=e.response.status_code)
-    
-    except Exception as e:
-        print(f"❌ Unexpected error: {str(e)}")
-        return HttpResponse(f'Error: {str(e)}', status=500)
-    
-
 def get_lapangan_list(request):
-    """
-    API endpoint untuk Flutter - return list lapangan dengan image path (relative path only)
-    
-    Response format:
-    [
-        {
-            "id": 1,
-            "name": "Futsal Arena Senayan",
-            "type": "Futsal",
-            "location": "Jakarta Pusat",
-            "price": 150000,
-            "rating": 4.5,
-            "image": "/media/lapangan_images/foto.jpg",  # RELATIVE PATH
-            "review_count": 10
-        },
-        ...
-    ]
-    """
-    # Get all lapangan, ordered by primary key
     lapangan_queryset = Lapangan.objects.all().order_by('pk')
     
     data = []
     
     for field in lapangan_queryset:
-        # ====================================
-        # IMAGE PATH LOGIC - Return RELATIVE PATH only!
-        # ====================================
-        image_path = ""
+        possible_png = f'static/images/lapangan{field.pk}.png'
         
-        # Priority 1: Check if field has uploaded image (foto_utama)
+        image_url = possible_png
+
         if field.foto_utama:
-            # foto_utama.url returns relative path like "/media/lapangan_images/foto.jpg"
-            image_path = field.foto_utama.url
-            print(f"✅ Using foto_utama for {field.nama_lapangan}: {image_path}")
-        
-        else:
-            # Priority 2: Fallback to static images
-            # Check for PNG first, then JPG
-            static_png = f'images/lapangan{field.pk}.png'
-            static_jpg = f'images/lapangan{field.pk}.jpg'
-            
-            if find(static_png):
-                image_path = f'/static/images/lapangan{field.pk}.png'
-                print(f"✅ Using static PNG for {field.nama_lapangan}: {image_path}")
-            
-            elif find(static_jpg):
-                image_path = f'/static/images/lapangan{field.pk}.jpg'
-                print(f"✅ Using static JPG for {field.nama_lapangan}: {image_path}")
-            
-            else:
-                # No image found - leave empty
-                print(f"⚠️ No image found for {field.nama_lapangan} (ID: {field.pk})")
-                image_path = ""
-        
-        # ====================================
-        # BUILD RESPONSE DATA
-        # ====================================
+            image_url = field.foto_utama.url
+
         data.append({
             "id": field.pk,
-            "name": field.nama_lapangan,
-            "type": field.jenis_olahraga,
-            "location": field.lokasi,
-            "price": int(field.harga_per_jam),
-            "rating": float(field.rating),
-            "image": image_path,  # ✅ ALWAYS RELATIVE PATH (e.g., "/media/..." or "/static/...")
-            "review_count": field.jumlah_ulasan
+            "name": field.nama_lapangan,        
+            "type": field.jenis_olahraga,      
+            "location": field.lokasi,           
+            "price": int(field.harga_per_jam),  
+            "rating": float(field.rating),      
+            "image": image_url,
+            "review_count": field.jumlah_ulasan 
         })
-    
-    print(f"📊 Returning {len(data)} lapangan entries")
+
     return JsonResponse(data, safe=False)
