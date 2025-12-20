@@ -785,19 +785,31 @@ def join_community_flutter(request, pk):
         return JsonResponse({"status": "error", "message": "Invalid method"}, status=405)
 
     try:
-        community = Community.objects.get(pk=pk)
-    except Community.DoesNotExist:
-        return JsonResponse({"status": "error", "message": "Community not found"}, status=404)
+        if not request.user.is_authenticated:
+            return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
 
-    member, created = CommunityMember.objects.get_or_create(
-        user=request.user,
-        community=community,
-    )
+        community = get_object_or_404(Community, pk=pk, is_active=True)
 
-    if created:
-        return JsonResponse({"status": "success", "message": "Berhasil join"})
-    else:
-        return JsonResponse({"status": "success", "message": "Kamu sudah terdaftar"})
+        member, created = CommunityMember.objects.get_or_create(
+            user=request.user,
+            community=community,
+            defaults={'is_active': True},
+        )
+
+        # Kalau sudah ada tapi is_active False → aktifkan lagi
+        if not created and not member.is_active:
+            member.is_active = True
+            member.save()
+
+        # Sinkron member_count
+        community.member_count = community.members.filter(is_active=True).count()
+        community.save()
+
+        msg = "Berhasil join" if created or not member.is_active else "Kamu sudah terdaftar"
+        return JsonResponse({"status": "success", "message": msg})
+
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
 @csrf_exempt
 def leave_community_flutter(request, pk):
@@ -891,92 +903,74 @@ def create_request_flutter(request):
 
 @csrf_exempt
 def create_post_flutter(request, pk):
-    """
-    Endpoint untuk membuat post baru di komunitas via Mobile
-    URL: /community/api/<pk>/post/create-flutter/
-    """
-    if request.method == 'POST':
-        try:
-            # 1. Cek Autentikasi
-            if not request.user.is_authenticated:
-                return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
 
-            community = get_object_or_404(Community, pk=pk)
+    try:
+        if not request.user.is_authenticated:
+            return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
 
-            # 2. Cek Membership
-            if not CommunityMember.objects.filter(community=community, user=request.user, is_active=True).exists():
-                return JsonResponse({'status': 'error', 'message': 'Anda harus menjadi anggota untuk membuat post.'}, status=403)
+        community = get_object_or_404(Community, pk=pk, is_active=True)
 
-            content = ''
-            image_file = None 
+        # WAJIB: cek member aktif
+        is_member = CommunityMember.objects.filter(
+            community=community,
+            user=request.user,
+            is_active=True,
+        ).exists()
+        if not is_member:
+            return JsonResponse({'status': 'error', 'message': 'Anda harus menjadi anggota untuk membuat post.'}, status=403)
 
-            # -------------------------------------------------------------
-            # LOGIKA PENERJEMAH (BRIDGE) DATA GAMBAR
-            # -------------------------------------------------------------
-            
-            # CASE A: Request dikirim sebagai JSON Body
-            if request.content_type == 'application/json':
-                data = json.loads(request.body)
-                content = data.get('content', '').strip()
-                image_data = data.get('image') 
-            
-            # CASE B: Request dikirim sebagai Form Data (Default pbp_django_auth)
-            else:
-                content = request.POST.get('content', '').strip()
-                # Cek apakah ada file beneran (Multipart) atau Base64 String di POST
-                image_file = request.FILES.get('image')
-                image_data = request.POST.get('image') # Cek string base64 di sini
+        # Terima JSON dari Flutter
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
 
-            # PROSES DECODE BASE64 (Jika image_data ada dan image_file belum ada)
-            if image_data and not image_file:
-                try:
-                    # Format base64 kadang ada prefix "data:image/jpeg;base64,", kita harus bersihkan
-                    if ";base64," in image_data:
-                        format, imgstr = image_data.split(';base64,') 
-                        ext = format.split('/')[-1] 
-                    else:
-                        imgstr = image_data
-                        ext = "jpg" # default
+        content = data.get('content', '').strip()
+        image_b64 = data.get('image')
 
-                    # Generate nama file unik biar gak bentrok (pake UUID)
-                    file_name = f"{request.user.username}_{uuid.uuid4()}.{ext}"
-                    
-                    # Konversi String Base64 -> File Object Django
-                    image_file = ContentFile(base64.b64decode(imgstr), name=file_name)
-                except Exception as e:
-                    print(f"Error decoding base64: {e}")
+        if not content:
+            return JsonResponse({'status': 'error', 'message': 'Konten tidak boleh kosong.'}, status=400)
 
-            # 3. Validasi & Simpan ke Database
-            if not content:
-                return JsonResponse({'status': 'error', 'message': 'Konten post tidak boleh kosong.'}, status=400)
+        image_file = None
+        if image_b64:
+            try:
+                if ';base64,' in image_b64:
+                    fmt, imgstr = image_b64.split(';base64,')
+                    ext = fmt.split('/')[-1]
+                else:
+                    imgstr = image_b64
+                    ext = 'jpg'
+                file_name = f"{request.user.username}_{uuid.uuid4()}.{ext}"
+                image_file = ContentFile(base64.b64decode(imgstr), name=file_name)
+            except Exception as e:
+                print(f"Error decoding image: {e}")
 
-            post = CommunityPost.objects.create(
-                community=community,
-                user=request.user,
-                content=content,
-                image=image_file 
-            )
+        post = CommunityPost.objects.create(
+            community=community,
+            user=request.user,
+            content=content,
+            image=image_file,
+        )
 
-            # 4. Return Response Sukses
-            return JsonResponse({
-                'status': 'success', 
-                'message': 'Post berhasil dibuat!',
-                'post': {
-                    'pk': post.pk,
-                    'content': post.content,
-                    'image_url': post.image.url if post.image else None, 
-                    'created_at': post.created_at.strftime("%d %b %Y, %H:%M"),
-                    'user': {
-                        'username': post.user.username,
-                    }
-                }
-            })
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Post berhasil dibuat!',
+            'post': {
+                'pk': post.pk,
+                'username': post.user.username,
+                'content': post.content,
+                'image_url': post.image.url if post.image else None,
+                'created_at': post.created_at.strftime("%Y-%m-%d %H:%M"),
+                'comments_count': 0,
+                'comments': [],
+            }
+        })
 
-        except Exception as e:
-            print(f"Error Upload: {e}") 
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
-    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
 @csrf_exempt
 def create_comment_flutter(request, post_id):
     """
