@@ -781,46 +781,23 @@ def create_community_flutter(request):
 
 @csrf_exempt
 def join_community_flutter(request, pk):
-    """
-    Endpoint untuk join komunitas via Mobile
-    URL: /community/api/<pk>/join-flutter/
-    """
-    if request.method == 'POST':
-        try:
-            if not request.user.is_authenticated:
-                return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "Invalid method"}, status=405)
 
-            community = get_object_or_404(Community, pk=pk, is_active=True)
+    try:
+        community = Community.objects.get(pk=pk)
+    except Community.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Community not found"}, status=404)
 
-            # Cek apakah komunitas penuh
-            if community.member_count >= community.max_member:
-                return JsonResponse({'status': 'error', 'message': 'Komunitas sudah penuh!'}, status=400)
+    member, created = CommunityMember.objects.get_or_create(
+        user=request.user,
+        community=community,
+    )
 
-            # Cek status member
-            member, created = CommunityMember.objects.get_or_create(
-                community=community,
-                user=request.user,
-                defaults={'is_active': True}
-            )
-
-            if not created and member.is_active:
-                 return JsonResponse({'status': 'info', 'message': 'Anda sudah terdaftar di komunitas ini.'})
-            
-            # Jika user kembali join (sebelumnya leave)
-            member.is_active = True
-            member.save()
-            
-            # Update counter member di model Community
-            community.member_count = community.members.filter(is_active=True).count()
-            community.save()
-
-            return JsonResponse({'status': 'success', 'message': f'Berhasil bergabung ke {community.community_name}'})
-
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
-
+    if created:
+        return JsonResponse({"status": "success", "message": "Berhasil join"})
+    else:
+        return JsonResponse({"status": "success", "message": "Kamu sudah terdaftar"})
 
 @csrf_exempt
 def leave_community_flutter(request, pk):
