@@ -76,7 +76,7 @@ def lapangan_list(request):
     lokasi_filter = request.GET.get('lokasi', '')
 
     # Filter hanya lapangan milik pemilik yang login dan urutkan berdasarkan PK
-    lapangan_queryset = Lapangan.objects.filter(pengelola=request.user.profile).order_by('pk')
+    lapangan_queryset = Lapangan.objects.filter(pengelola=request.user.profile, is_active=True).order_by('pk')
 
     if jenis_filter:
         lapangan_queryset = lapangan_queryset.filter(jenis_olahraga=jenis_filter)
@@ -447,7 +447,8 @@ def lapangan_delete(request, pk):
             messages.error(request, error_msg)
             return redirect('admin_dashboard:lapangan_list')
         
-        lapangan.delete()
+        lapangan.is_active = False # Soft delete
+        lapangan.save()
         if is_mobile_api: return JsonResponse({'status': True, 'message': 'Lapangan berhasil dihapus!'})
         
         messages.success(request, 'Lapangan berhasil dihapus!')
