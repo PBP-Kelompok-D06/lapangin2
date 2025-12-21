@@ -483,17 +483,20 @@ def admin_community_edit(request, pk):
 @user_passes_test(is_pemilik)
 @csrf_exempt
 def admin_community_delete(request, pk):
-    """Hapus komunitas"""
-    community = get_object_or_404(Community, pk=pk)
-    
-    if request.method == 'POST':
+    """Hapus komunitas via API JSON"""
+    if request.method != 'POST':
+        return JsonResponse({'status': False, 'message': 'Method not allowed'}, status=405)
+
+    try:
+        community = get_object_or_404(Community, pk=pk)
+        
         # Soft delete
         community.is_active = False
         community.save()
-        messages.success(request, 'Komunitas berhasil dihapus!')
-        return redirect('community:admin_community_list')
-    
-    return render(request, 'admin_community_confirm_delete.html', {'community': community})
+        
+        return JsonResponse({'status': True, 'message': 'Komunitas berhasil dihapus!'})
+    except Exception as e:
+        return JsonResponse({'status': False, 'message': str(e)}, status=500)
 
 
 @login_required
