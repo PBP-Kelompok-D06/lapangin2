@@ -304,8 +304,8 @@ def admin_community_list(request):
     jenis_filter = request.GET.get('jenis', '')
     lokasi_filter = request.GET.get('lokasi', '')
 
-    # Mulai dengan semua komunitas
-    community_list = Community.objects.all() 
+    # Mulai dengan semua komunitas yang aktif
+    community_list = Community.objects.filter(is_active=True) 
 
     # Terapkan filter jika ada
     if jenis_filter:
@@ -384,12 +384,17 @@ def admin_community_edit(request, pk):
     - Handle Web Request (HTML Form) -> URL: /community/admin/<pk>/edit/
     - Handle Mobile Request (JSON/API) -> URL: /community/api/<pk>/edit-flutter/
     """
-    # Deteksi apakah request berasal dari Mobile/API (biasanya ada header khusus atau content-type json)
-    # Kita bisa cek content-type atau header X-Requested-With, atau sekadar asumsi dari path (tapi ini satu view)
-    # Cara paling aman: Cek Accept header atau Content-Type
-    is_mobile_api = request.content_type == 'application/json' or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'api/' in request.path
+    # Deteksi apakah request berasal dari Mobile/API
+    is_mobile_api = (
+        request.content_type == 'application/json' or 
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 
+        'api/' in request.path or
+        request.headers.get('Accept') == 'application/json' or
+        request.GET.get('format') == 'json'
+    )
 
     # 2. Validasi Authorization (Owner / Superuser)
+    community = get_object_or_404(Community, pk=pk)
     if community.created_by != request.user and not request.user.is_superuser:
         if is_mobile_api:
              return JsonResponse({'status': False, 'message': 'Anda tidak memiliki izin mengedit komunitas ini.'}, status=403)
@@ -476,12 +481,15 @@ def admin_community_edit(request, pk):
 
 @login_required
 @user_passes_test(is_pemilik)
+@csrf_exempt
 def admin_community_delete(request, pk):
     """Hapus komunitas"""
     community = get_object_or_404(Community, pk=pk)
     
     if request.method == 'POST':
-        community.delete()
+        # Soft delete
+        community.is_active = False
+        community.save()
         messages.success(request, 'Komunitas berhasil dihapus!')
         return redirect('community:admin_community_list')
     

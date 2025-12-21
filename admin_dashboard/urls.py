@@ -49,6 +49,7 @@ urlpatterns = [
     
     # API 8: Update Lapangan (NEW)
     path('api/lapangan/<int:lapangan_id>/update/', api_views.api_lapangan_update, name='api_lapangan_update'),
+    path('api/lapangan/<int:lapangan_id>/edit/', api_views.api_lapangan_update, name='api_lapangan_edit_alias'),
     
     # API 9: Delete Lapangan (NEW)
     path('api/lapangan/<int:lapangan_id>/delete/', api_views.api_lapangan_delete, name='api_lapangan_delete'),
